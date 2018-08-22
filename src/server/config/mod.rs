@@ -17,7 +17,7 @@ impl Config {
             config.port = match value_t!(args, "port", u16) {
                 Ok(port) => port,
                 Err(_) => return Err(RatdError::InvalidPortNumber),
-            }
+            };
         }
 
         if args.is_present("workers") {
@@ -30,7 +30,7 @@ impl Config {
                     NonZeroUsize::new(workers).unwrap()
                 },
                 Err(_) => return Err(RatdError::InvalidWorkerCount),
-            }
+            };
         }
 
         Ok(config)
