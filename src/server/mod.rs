@@ -12,7 +12,7 @@ pub struct Server {}
 
 impl Server {
     pub fn run(config: Config) -> Result<(), RatdError> {
-        let address = SocketAddr::from(([127, 0, 0, 1], config.port));
+        let address = SocketAddr::from(([0; 4], config.port));
         let socket = match UdpSocket::bind(address) {
             Ok(socket) => socket,
             Err(_) => return Err(RatdError::SocketBindFailure),
@@ -25,6 +25,7 @@ impl Server {
                 .expect("Didn't receive data");
             println!("Size: {}", size);
             println!("Source Address: {}", src);
+            println!("Buffer: {:?}", &buffer[..128]);
         }
 
         Ok(())
