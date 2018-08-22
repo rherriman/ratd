@@ -1,0 +1,16 @@
+name: ratd
+version: "0.1.0"
+about: Rust Avara Tracker Daemon
+author: Ryan Herriman
+
+args:
+    - port:
+        help: the port number to listen on
+        short: p
+        long: port
+        takes_value: true
+    - workers:
+        help: the number of threads allocated for request processing
+        short: w
+        long: workers
+        takes_value: true
