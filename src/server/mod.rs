@@ -18,14 +18,21 @@ impl Server {
             Err(_) => return Err(RatdError::SocketBindFailure),
         };
         let thread_pool = ThreadPool::new(config.workers);
-        let mut buffer = [0; 8192];
 
         loop {
-            let (size, src) = socket.recv_from(&mut buffer)
-                .expect("Didn't receive data");
-            println!("Size: {}", size);
-            println!("Source Address: {}", src);
-            println!("Buffer: {:?}", &buffer[..128]);
+            let mut buffer = [0; 8192];
+            let (size, src) = match socket.recv_from(&mut buffer) {
+                Ok((size, src)) => (size, src),
+                Err(_) => {
+                    eprintln!("Failed to receive datagram");
+                    continue;
+                },
+            };
+            thread_pool.execute(move || {
+                println!("Size: {}", size);
+                println!("Source Address: {}", src);
+                println!("Buffer: {:?}", &buffer[..128]);
+            });
         }
 
         Ok(())

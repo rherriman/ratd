@@ -25,5 +25,5 @@ fn main() {
         process::exit(e as i32);
     }
 
-    println!("It's working! It's workiiiiing!");
+    println!("Shutting down...");
 }
