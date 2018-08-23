@@ -22,7 +22,7 @@ impl Server {
         loop {
             let mut buffer = [0; 8192];
             let (size, src) = match socket.recv_from(&mut buffer) {
-                Ok((size, src)) => (size, src),
+                Ok(headers) => headers,
                 Err(_) => {
                     eprintln!("Failed to receive datagram");
                     continue;
@@ -31,7 +31,7 @@ impl Server {
             thread_pool.execute(move || {
                 println!("Size: {}", size);
                 println!("Source Address: {}", src);
-                println!("Buffer: {:?}", &buffer[..128]);
+                println!("Bytes: {:?}", &buffer[..size]);
             });
         }
 
