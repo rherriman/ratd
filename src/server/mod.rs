@@ -1,12 +1,14 @@
+pub mod config;
+pub mod error;
+pub mod protocol;
+pub mod threading;
+
 use std::net::{SocketAddr, UdpSocket};
 
 use self::config::Config;
 use self::error::RatdError;
+use self::protocol::Command;
 use self::threading::ThreadPool;
-
-pub mod config;
-pub mod error;
-pub mod threading;
 
 pub struct Server {}
 
