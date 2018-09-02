@@ -1,42 +1,43 @@
 pub mod config;
-pub mod error;
 pub mod protocol;
 pub mod threading;
 
 use std::net::{SocketAddr, UdpSocket};
 
-use self::config::Config;
-use self::error::RatdError;
-use self::protocol::Command;
-use self::threading::ThreadPool;
+use self::{
+    config::{Config, ConfigError},
+    protocol::Command,
+    threading::ThreadPool
+};
 
-pub struct Server {}
+pub struct Server {
+    socket: UdpSocket,
+    thread_pool: ThreadPool,
+}
 
 impl Server {
-    pub fn run(config: Config) -> Result<(), RatdError> {
+    pub fn new(config: Config) -> Result<Server, ConfigError> {
         let address = SocketAddr::from(([0; 4], config.port));
-        let socket = match UdpSocket::bind(address) {
-            Ok(socket) => socket,
-            Err(_) => return Err(RatdError::SocketBindFailure),
-        };
+        let socket = UdpSocket::bind(address).map_err(|_| ConfigError::SocketBindFailure)?;
         let thread_pool = ThreadPool::new(config.workers);
+        Ok(Server { socket, thread_pool })
+    }
 
+    pub fn run(&self) {
         loop {
             let mut buffer = [0; 8192];
-            let (size, src) = match socket.recv_from(&mut buffer) {
+            let (size, src) = match self.socket.recv_from(&mut buffer) {
                 Ok(headers) => headers,
                 Err(_) => {
                     eprintln!("Failed to receive datagram");
                     continue;
                 },
             };
-            thread_pool.execute(move || {
+            self.thread_pool.execute(move || {
                 println!("Size: {}", size);
                 println!("Source Address: {}", src);
                 println!("Bytes: {:?}", &buffer[..size]);
             });
         }
-
-        Ok(())
     }
 }

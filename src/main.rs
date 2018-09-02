@@ -20,9 +20,12 @@ fn main() {
         process::exit(e as i32);
     });
 
-    if let Err(e) = Server::run(config) {
-        eprintln!("{}", e);
-        process::exit(e as i32);
+    match Server::new(config) {
+        Ok(server) => server.run(),
+        Err(e) => {
+            eprintln!("ERROR: {}", e);
+            process::exit(e as i32);
+        }
     }
 
     println!("Shutting down...");
