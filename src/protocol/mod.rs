@@ -74,7 +74,7 @@ impl PlayerId {
     /// The `new` function will panic if the id is not a value between 0 and 5.
     fn new(id: u8) -> PlayerId {
         if id >= MAX_PLAYERS {
-            panic!("Invalid player ID passed to PlayerID constructor");
+            panic!("Invalid player ID passed to PlayerId constructor");
         }
         PlayerId { id }
     }
