@@ -3,9 +3,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr}
 };
 
-use super::{Command, GameStatus, TrackerTag};
-
-const MAX_PLAYERS: u8 = 6;
+use super::{MAX_PLAYERS, Command, GameStatus, PlayerId, TrackerTag};
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -95,15 +93,15 @@ pub fn try_bytes_to_u32(bytes: &[u8]) -> Result<u32, ParseError> {
     Ok(combined)
 }
 
-pub fn try_byte_to_player_index(i: u8) -> Result<u8, ParseError> {
+pub fn try_byte_to_player_index(i: u8) -> Result<PlayerId, ParseError> {
     if i >= MAX_PLAYERS {
         Err(ParseError::InvalidPlayerIndex)
     } else {
-        Ok(i)
+        Ok(PlayerId::new(i))
     }
 }
 
-pub fn try_bytes_to_indexed_socketaddr(bytes: &[u8]) -> Result<(u8, SocketAddr), ParseError> {
+pub fn try_bytes_to_indexed_socketaddr(bytes: &[u8]) -> Result<(PlayerId, SocketAddr), ParseError> {
     if bytes.len() != 7 {
         return Err(ParseError::InvalidTag);
     }
@@ -114,7 +112,7 @@ pub fn try_bytes_to_indexed_socketaddr(bytes: &[u8]) -> Result<(u8, SocketAddr),
     Ok((player_idx, SocketAddr::new(ip, port)))
 }
 
-pub fn try_bytes_to_indexed_vec_string(bytes: &[u8]) -> Result<(u8, Vec<u8>), ParseError> {
+pub fn try_bytes_to_indexed_vec_string(bytes: &[u8]) -> Result<(PlayerId, Vec<u8>), ParseError> {
     if bytes.len() == 0 {
         return Err(ParseError::InvalidTag);
     }
@@ -124,7 +122,7 @@ pub fn try_bytes_to_indexed_vec_string(bytes: &[u8]) -> Result<(u8, Vec<u8>), Pa
     Ok((player_idx, string_data))
 }
 
-pub fn try_bytes_to_indexed_u16(bytes: &[u8]) -> Result<(u8, u16), ParseError> {
+pub fn try_bytes_to_indexed_u16(bytes: &[u8]) -> Result<(PlayerId, u16), ParseError> {
     if bytes.len() != 3 {
         return Err(ParseError::InvalidTag);
     }
@@ -134,7 +132,7 @@ pub fn try_bytes_to_indexed_u16(bytes: &[u8]) -> Result<(u8, u16), ParseError> {
     Ok((player_idx, u16_data))
 }
 
-pub fn try_bytes_to_indexed_i16_i16(bytes: &[u8]) -> Result<(u8, i16, i16), ParseError> {
+pub fn try_bytes_to_indexed_i16_i16(bytes: &[u8]) -> Result<(PlayerId, i16, i16), ParseError> {
     if bytes.len() != 5 {
         return Err(ParseError::InvalidTag);
     }
@@ -266,7 +264,7 @@ mod tests {
         let result = try_bytes_to_indexed_socketaddr(&bytes[0..7]);
         assert!(result.is_ok());
         let (player_idx, addr) = result.unwrap();
-        assert_eq!(0, player_idx);
+        assert_eq!(PlayerId::new(0), player_idx);
         assert_eq!(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567), addr);
 
         let result = try_bytes_to_indexed_socketaddr(&bytes);
@@ -289,7 +287,7 @@ mod tests {
         let result = try_bytes_to_indexed_vec_string(&bytes);
         assert!(result.is_ok());
         let (player_idx, vec_string) = result.unwrap();
-        assert_eq!(0, player_idx);
+        assert_eq!(PlayerId::new(0), player_idx);
         assert_eq!(bytes.len() - 1, vec_string.len());
         for i in 0..vec_string.len() {
             assert_eq!(bytes[i + 1], vec_string[i]);
@@ -298,7 +296,7 @@ mod tests {
         let result = try_bytes_to_indexed_vec_string(&bytes[0..1]);
         assert!(result.is_ok());
         let (player_idx, vec_string) = result.unwrap();
-        assert_eq!(0, player_idx);
+        assert_eq!(PlayerId::new(0), player_idx);
         assert_eq!(0, vec_string.len());
 
         let result = try_bytes_to_indexed_vec_string(&[]);
@@ -312,7 +310,7 @@ mod tests {
         let result = try_bytes_to_indexed_u16(&bytes[0..3]);
         assert!(result.is_ok());
         let (player_idx, num) = result.unwrap();
-        assert_eq!(0, player_idx);
+        assert_eq!(PlayerId::new(0), player_idx);
         assert_eq!(258, num);
 
         let result = try_bytes_to_indexed_u16(&bytes);
@@ -334,7 +332,7 @@ mod tests {
         let result = try_bytes_to_indexed_i16_i16(&bytes[0..5]);
         assert!(result.is_ok());
         let (player_idx, num_1, num_2) = result.unwrap();
-        assert_eq!(0, player_idx);
+        assert_eq!(PlayerId::new(0), player_idx);
         assert_eq!(7_233, num_1);
         assert_eq!(-19_112, num_2);
 

@@ -1,12 +1,10 @@
 pub mod config;
-pub mod protocol;
 pub mod threading;
 
 use std::net::{SocketAddr, UdpSocket};
 
 use self::{
     config::{Config, ConfigError},
-    protocol::Command,
     threading::ThreadPool
 };
 

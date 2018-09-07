@@ -5,6 +5,7 @@ use std::net::SocketAddr;
 use self::parser::ParseError;
 
 const PROTOCOL_VERSION: u16 = 6;
+pub const MAX_PLAYERS: u8 = 6;
 
 #[repr(u8)]
 #[derive(Clone, Debug, PartialEq)]
@@ -60,6 +61,25 @@ impl GameStatus {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct PlayerId {
+    id: u8,
+}
+
+impl PlayerId {
+    /// Create a new PlayerId.
+    ///
+    /// # Panics
+    ///
+    /// The `new` function will panic if the id is not a value between 0 and 5.
+    fn new(id: u8) -> PlayerId {
+        if id >= MAX_PLAYERS {
+            panic!("Invalid player ID passed to PlayerID constructor");
+        }
+        PlayerId { id }
+    }
+}
+
 #[derive(Debug)]
 pub enum TrackerTag {
     Null,
@@ -81,10 +101,10 @@ pub enum TrackerTag {
     SoftwareVersion(Vec<u8>),
 
     // (Indexed) Player fields.
-    PlayerIPPort(u8, SocketAddr),
-    PlayerNick(u8, Vec<u8>),
-    PlayerLives(u8, u16),
-    PlayerLocation(u8, i16, i16),
+    PlayerIPPort(PlayerId, SocketAddr),
+    PlayerNick(PlayerId, Vec<u8>),
+    PlayerLives(PlayerId, u16),
+    PlayerLocation(PlayerId, i16, i16),
 }
 
 impl TrackerTag {

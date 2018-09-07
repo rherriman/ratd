@@ -16,7 +16,7 @@ impl ThreadPool {
     pub fn new(size: NonZeroUsize) -> ThreadPool {
         let (sender, receiver) = mpsc::channel();
         let receiver = Arc::new(Mutex::new(receiver));
-        
+
         let size = size.get();
         let mut workers = Vec::with_capacity(size);
         for id in 1..=size {
@@ -91,13 +91,3 @@ impl<F> FnBox for F
 }
 
 type Job = Box<dyn FnBox + Send + 'static>;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
