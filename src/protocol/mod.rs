@@ -114,5 +114,37 @@ impl Datagram {
 
 #[cfg(test)]
 mod tests {
+    use super::{PROTOCOL_VERSION, MAX_PLAYERS, Command, PlayerId, TrackerTag, Datagram};
 
+    #[test]
+    fn valid_playerids() {
+        for i in 0..MAX_PLAYERS {
+            let _ = PlayerId::new(i);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_playerid() {
+        let _ = PlayerId::new(MAX_PLAYERS);
+    }
+
+    #[test]
+    fn new_datagram() {
+        let command = Command::Hello;
+        let datagram = Datagram::new(command);
+        assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
+        assert_eq!(Command::Hello, datagram.command);
+        assert_eq!(0, datagram.tags.len());
+    }
+
+    #[test]
+    fn datagram_add_tag() {
+        let command = Command::Hello;
+        let mut datagram = Datagram::new(command);
+        datagram.add_tag(TrackerTag::HasPassword);
+        assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
+        assert_eq!(Command::Hello, datagram.command);
+        assert_eq!(1, datagram.tags.len());
+    }
 }
