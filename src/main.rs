@@ -16,7 +16,7 @@ fn main() {
     let yml = load_yaml!("cli_en.yml");
     let args = App::from_yaml(yml).get_matches();
     let config = Config::from_clap(args).unwrap_or_else(|e| {
-        eprintln!("{}", e);
+        eprintln!("ERROR: {}", e);
         process::exit(e as i32);
     });
 
