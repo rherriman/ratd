@@ -14,7 +14,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(config: Config) -> Result<Server, ConfigError> {
+    pub fn new(config: &Config) -> Result<Server, ConfigError> {
         let address = SocketAddr::from(([0; 4], config.port));
         let socket = UdpSocket::bind(address).map_err(|_| ConfigError::SocketBindFailure)?;
         let thread_pool = ThreadPool::new(config.workers);

@@ -31,7 +31,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_clap(args: ArgMatches) -> Result<Config, ConfigError> {
+    pub fn from_clap(args: &ArgMatches) -> Result<Config, ConfigError> {
         let mut config = Config::default();
 
         if args.is_present("port") {
