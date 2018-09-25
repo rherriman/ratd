@@ -59,7 +59,7 @@ pub trait TryParse where Self: Sized {
 }
 
 impl TryParse for CommandPayload {
-    fn try_parse(bytes: &[u8]) -> Result<CommandPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 1 {
             return Err(Error::InvalidCommand);
         }
@@ -77,7 +77,7 @@ impl TryParse for CommandPayload {
 }
 
 impl TryParse for GameStatusPayload {
-    fn try_parse(bytes: &[u8]) -> Result<GameStatusPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 1 {
             return Err(Error::InvalidGameStatus);
         }
@@ -95,7 +95,7 @@ impl TryParse for GameStatusPayload {
 }
 
 impl TryParse for BigIntPayload {
-    fn try_parse(bytes: &[u8]) -> Result<BigIntPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 4 {
             return Err(Error::InvalidTag);
         }
@@ -112,7 +112,7 @@ impl TryParse for BigIntPayload {
 }
 
 impl TryParse for IntPayload {
-    fn try_parse(bytes: &[u8]) -> Result<IntPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 2 {
             return Err(Error::InvalidTag);
         }
@@ -127,7 +127,7 @@ impl TryParse for IntPayload {
 }
 
 impl TryParse for SmallIntPayload {
-    fn try_parse(bytes: &[u8]) -> Result<SmallIntPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 1 {
             return Err(Error::InvalidTag);
         }
@@ -137,13 +137,13 @@ impl TryParse for SmallIntPayload {
 }
 
 impl TryParse for RawStringPayload {
-    fn try_parse(bytes: &[u8]) -> Result<RawStringPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         Ok(RawStringPayload(bytes.to_vec()))
     }
 }
 
 impl TryParse for PlayerId {
-    fn try_parse(bytes: &[u8]) -> Result<PlayerId, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 1 || bytes[0] >= MAX_PLAYERS {
             return Err(Error::InvalidPlayerIndex);
         }
@@ -153,7 +153,7 @@ impl TryParse for PlayerId {
 }
 
 impl TryParse for IndexedSocketAddrPayload {
-    fn try_parse(bytes: &[u8]) -> Result<IndexedSocketAddrPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 7 {
             return Err(Error::InvalidTag);
         }
@@ -166,7 +166,7 @@ impl TryParse for IndexedSocketAddrPayload {
 }
 
 impl TryParse for IndexedRawStringPayload {
-    fn try_parse(bytes: &[u8]) -> Result<IndexedRawStringPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.is_empty() {
             return Err(Error::InvalidTag);
         }
@@ -178,7 +178,7 @@ impl TryParse for IndexedRawStringPayload {
 }
 
 impl TryParse for IndexedIntPayload {
-    fn try_parse(bytes: &[u8]) -> Result<IndexedIntPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 3 {
             return Err(Error::InvalidTag);
         }
@@ -190,7 +190,7 @@ impl TryParse for IndexedIntPayload {
 }
 
 impl TryParse for IndexedLocationPayload {
-    fn try_parse(bytes: &[u8]) -> Result<IndexedLocationPayload, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() != 5 {
             return Err(Error::InvalidTag);
         }
@@ -203,7 +203,7 @@ impl TryParse for IndexedLocationPayload {
 }
 
 impl TryParse for TrackerTag {
-    fn try_parse(bytes: &[u8]) -> Result<TrackerTag, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.len() < 2 {
             return Err(Error::InvalidTag);
         }
@@ -242,7 +242,7 @@ impl TryParse for TrackerTag {
 }
 
 impl TryParse for Datagram {
-    fn try_parse(bytes: &[u8]) -> Result<Datagram, Error> {
+    fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         let mut protocol_version = None;
         let mut command = None;
         let mut tags = Vec::new();

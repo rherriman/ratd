@@ -1,12 +1,16 @@
 pub mod parse;
+pub mod serialize;
 
-use std::net::SocketAddr;
+use std::{
+    net::SocketAddr,
+    time::Instant
+};
 
 const PROTOCOL_VERSION: u16 = 6;
 pub const MAX_PLAYERS: u8 = 6;
 
 #[repr(u8)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Query,
     Response,
@@ -15,7 +19,7 @@ pub enum Command {
 }
 
 #[repr(u8)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum GameStatus {
     NotLoaded,
     Loaded,
@@ -23,20 +27,20 @@ pub enum GameStatus {
     Paused,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CommandPayload(Command);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GameStatusPayload(GameStatus);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BigIntPayload(u32);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IntPayload(u16);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SmallIntPayload(u8);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RawStringPayload(Vec<u8>);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlayerId {
     id: u8,
 }
@@ -55,16 +59,16 @@ impl PlayerId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IndexedSocketAddrPayload(PlayerId, SocketAddr);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IndexedRawStringPayload(PlayerId, RawStringPayload);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IndexedIntPayload(PlayerId, IntPayload);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IndexedLocationPayload(PlayerId, IntPayload, IntPayload);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TrackerTag {
     Command(CommandPayload),
     QueryID(BigIntPayload),
@@ -109,6 +113,28 @@ impl Datagram {
 
     pub fn add_tag(&mut self, tag: TrackerTag) {
         self.tags.push(tag);
+    }
+}
+
+pub struct Lobby {
+    outgoing: Datagram,
+    pub modified: Instant,
+}
+
+impl Lobby {
+    pub fn new(datagram: &Datagram) -> Lobby {
+        if datagram.command != Command::Hello {
+            panic!("Lobby instance can only be created from \"hello\" datagrams");
+        }
+        let mut outgoing = Datagram::new(Command::Response);
+        outgoing.tags = datagram.tags.clone();
+        let modified = Instant::now();
+        Lobby { outgoing, modified }
+    }
+
+    pub fn as_response(&self, query_id: &BigIntPayload, response_index: &IntPayload, response_count: &IntPayload) -> Datagram {
+        let mut outgoing = Datagram::new(Command::Response);
+        outgoing
     }
 }
 
