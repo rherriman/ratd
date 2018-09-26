@@ -2,15 +2,19 @@ pub mod parse;
 pub mod serialize;
 
 use std::{
+    collections::HashMap,
     net::SocketAddr,
+    sync::RwLock,
     time::Instant
 };
+
+use self::serialize::Serialize;
 
 const PROTOCOL_VERSION: u16 = 6;
 pub const MAX_PLAYERS: u8 = 6;
 
 #[repr(u8)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Command {
     Query,
     Response,
@@ -19,7 +23,7 @@ pub enum Command {
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum GameStatus {
     NotLoaded,
     Loaded,
@@ -114,10 +118,18 @@ impl Datagram {
     pub fn add_tag(&mut self, tag: TrackerTag) {
         self.tags.push(tag);
     }
+
+    pub fn get_command(&self) -> Command {
+        self.command
+    }
+
+    pub fn get_protocol_version(&self) -> u16 {
+        self.protocol_version
+    }
 }
 
 pub struct Lobby {
-    outgoing: Datagram,
+    preserialized: Vec<u8>,
     pub modified: Instant,
 }
 
@@ -126,21 +138,76 @@ impl Lobby {
         if datagram.command != Command::Hello {
             panic!("Lobby instance can only be created from \"hello\" datagrams");
         }
-        let mut outgoing = Datagram::new(Command::Response);
-        outgoing.tags = datagram.tags.clone();
         let modified = Instant::now();
-        Lobby { outgoing, modified }
+        let mut response = Datagram::new(Command::Response);
+        response.tags = datagram.tags.clone();
+        Lobby { preserialized: response.serialize(), modified }
     }
 
-    pub fn as_response(&self, query_id: &BigIntPayload, response_index: &IntPayload, response_count: &IntPayload) -> Datagram {
-        let mut outgoing = Datagram::new(Command::Response);
+    pub fn as_response(&self, query_id: u32, response_index: u16, response_count: u16) -> Vec<u8> {
+        let mut outgoing = self.preserialized.clone();
+        outgoing.reserve(14);
+        outgoing.append(&mut TrackerTag::QueryID(BigIntPayload(query_id)).serialize());
+        outgoing.append(&mut TrackerTag::ResponseIndex(IntPayload(response_index)).serialize());
+        outgoing.append(&mut TrackerTag::ResponseCount(IntPayload(response_count)).serialize());
         outgoing
+    }
+}
+
+#[derive(Default)]
+pub struct LobbyList {
+    list: RwLock<HashMap<SocketAddr, Lobby>>,
+}
+
+impl LobbyList {
+    pub fn new() -> LobbyList {
+        let list = RwLock::new(HashMap::new());
+        LobbyList { list }
+    }
+
+    pub fn insert(&self, key: &SocketAddr, datagram: &Datagram) {
+        self.list.write().unwrap().insert(*key, Lobby::new(datagram));
+    }
+
+    pub fn remove(&self, key: &SocketAddr) {
+        self.list.write().unwrap().remove(key);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{PROTOCOL_VERSION, MAX_PLAYERS, Command, PlayerId, TrackerTag, Datagram};
+    use std::{
+        net::{IpAddr, Ipv4Addr},
+        time::Duration
+    };
+
+    use super::*;
+
+    fn build_hello() -> Datagram {
+        let mut datagram = Datagram::new(Command::Hello);
+        datagram.add_tag(TrackerTag::SoftwareVersion(RawStringPayload(vec![49, 46, 48, 46, 50])));
+        datagram.add_tag(TrackerTag::PlayerLimit(SmallIntPayload(6)));
+        datagram.add_tag(TrackerTag::Invitation(RawStringPayload(vec![73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101])));
+        datagram.add_tag(TrackerTag::HasPassword);
+        datagram.add_tag(TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(
+            PlayerId::new(0),
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)
+        )));
+        datagram.add_tag(TrackerTag::LevelDirectory(RawStringPayload(vec![65, 65, 32, 78, 111, 114, 109, 97, 108])));
+        datagram.add_tag(TrackerTag::LevelName(RawStringPayload(vec![67, 111, 114, 111, 109, 111, 114, 97, 110])));
+        datagram.add_tag(TrackerTag::GameStatus(GameStatusPayload(GameStatus::Active)));
+        datagram.add_tag(TrackerTag::PlayerNick(IndexedRawStringPayload(
+            PlayerId::new(0),
+            RawStringPayload(vec![115, 105, 108, 118, 101, 114, 102, 111, 120])
+        )));
+        datagram.add_tag(TrackerTag::PlayerLocation(IndexedLocationPayload(
+            PlayerId::new(0),
+            IntPayload(7_233),
+            IntPayload(46_424)
+        )));
+        datagram.add_tag(TrackerTag::PlayerLives(IndexedIntPayload(PlayerId::new(0), IntPayload(3))));
+        datagram
+    }
 
     #[test]
     fn valid_playerids() {
@@ -159,8 +226,8 @@ mod tests {
     fn new_datagram() {
         let command = Command::Hello;
         let datagram = Datagram::new(command);
-        assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
-        assert_eq!(Command::Hello, datagram.command);
+        assert_eq!(PROTOCOL_VERSION, datagram.get_protocol_version());
+        assert_eq!(Command::Hello, datagram.get_command());
         assert_eq!(0, datagram.tags.len());
     }
 
@@ -172,5 +239,53 @@ mod tests {
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Hello, datagram.command);
         assert_eq!(1, datagram.tags.len());
+    }
+
+    #[test]
+    fn new_lobby() {
+        let datagram = build_hello();
+        let lobby = Lobby::new(&datagram);
+        assert!(lobby.modified.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    #[should_panic]
+    fn fail_new_lobby() {
+        let mut datagram = build_hello();
+        datagram.command = Command::Goodbye;
+        let _ = Lobby::new(&datagram);
+    }
+
+    #[test]
+    fn new_lobbylist() {
+        let lobby_list = LobbyList::new();
+        assert_eq!(0, lobby_list.list.read().unwrap().len());
+    }
+
+    #[test]
+    fn lobbylist_insert() {
+        let lobby_list = LobbyList::new();
+        assert_eq!(0, lobby_list.list.read().unwrap().len());
+
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567);
+        let datagram = build_hello();
+
+        lobby_list.insert(&addr, &datagram);
+        assert_eq!(1, lobby_list.list.read().unwrap().len());
+    }
+
+    #[test]
+    fn lobbylist_remove() {
+        let lobby_list = LobbyList::new();
+        assert_eq!(0, lobby_list.list.read().unwrap().len());
+
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567);
+        let datagram = build_hello();
+
+        lobby_list.insert(&addr, &datagram);
+        assert_eq!(1, lobby_list.list.read().unwrap().len());
+
+        lobby_list.remove(&addr);
+        assert_eq!(0, lobby_list.list.read().unwrap().len());
     }
 }

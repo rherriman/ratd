@@ -22,14 +22,14 @@ pub trait Serialize {
 
 impl Serialize for CommandPayload {
     fn serialize(&self) -> Vec<u8> {
-        let raw_value = self.0.clone() as u8;
+        let raw_value = self.0 as u8;
         vec![raw_value]
     }
 }
 
 impl Serialize for GameStatusPayload {
     fn serialize(&self) -> Vec<u8> {
-        let raw_value = self.0.clone() as u8;
+        let raw_value = self.0 as u8;
         vec![raw_value]
     }
 }
@@ -168,7 +168,7 @@ impl Serialize for Datagram {
     fn serialize(&self) -> Vec<u8> {
         let mut protocol_version = TrackerTag::ProtocolVersion(IntPayload(self.protocol_version))
             .serialize();
-        let mut command = TrackerTag::Command(CommandPayload(self.command.clone()))
+        let mut command = TrackerTag::Command(CommandPayload(self.command))
             .serialize();
         let mut value = Vec::with_capacity(7);
         value.append(&mut protocol_version);
@@ -184,6 +184,7 @@ impl Serialize for Datagram {
 #[cfg(test)]
 mod tests {
     use std::net::{Ipv4Addr, SocketAddr};
+
     use ::protocol::{Command, GameStatus};
     use super::*;
 
