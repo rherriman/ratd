@@ -128,6 +128,42 @@ impl Serialize for IndexedLocationPayload {
     }
 }
 
+fn pack_tag(id: u8, payload: &impl Serialize) -> Vec<u8> {
+    let mut payload = payload.serialize();
+    let mut value = Vec::with_capacity(2 + payload.len());
+    value.push(id);
+    value.push(payload.len() as u8);
+    value.append(&mut payload);
+    value
+}
+
+impl Serialize for TrackerTag {
+    fn serialize(&self) -> Vec<u8> {
+        match self {
+            TrackerTag::Command(payload) => pack_tag(1, payload),
+            TrackerTag::QueryID(payload) => pack_tag(2, payload),
+            TrackerTag::QueryString(payload) => pack_tag(3, payload),
+            TrackerTag::HostDomain(payload) => pack_tag(4, payload),
+            TrackerTag::ResponseIndex(payload) => pack_tag(5, payload),
+            TrackerTag::ResponseCount(payload) => pack_tag(6, payload),
+            TrackerTag::StatusMessage(payload) => pack_tag(7, payload),
+            TrackerTag::InfoMessage(payload) => pack_tag(8, payload),
+            TrackerTag::Invitation(payload) => pack_tag(9, payload),
+            TrackerTag::HasPassword => vec![10, 0],
+            TrackerTag::PlayerLimit(payload) => pack_tag(11, payload),
+            TrackerTag::GameStatus(payload) => pack_tag(12, payload),
+            TrackerTag::LevelDirectory(payload) => pack_tag(13, payload),
+            TrackerTag::LevelName(payload) => pack_tag(14, payload),
+            TrackerTag::ProtocolVersion(payload) => pack_tag(15, payload),
+            TrackerTag::SoftwareVersion(payload) => pack_tag(16, payload),
+            TrackerTag::PlayerIPPort(payload) => pack_tag(255, payload),
+            TrackerTag::PlayerNick(payload) => pack_tag(254, payload),
+            TrackerTag::PlayerLives(payload) => pack_tag(253, payload),
+            TrackerTag::PlayerLocation(payload) => pack_tag(252, payload),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::net::{Ipv4Addr, SocketAddr};
@@ -227,5 +263,59 @@ mod tests {
             IntPayload(46_424)
         );
         assert_eq!(vec![0, 28, 65, 181, 88], value.serialize());
+    }
+
+    #[test]
+    fn serialize_trackertag() {
+        let value = TrackerTag::Command(CommandPayload(Command::Query));
+        assert_eq!(vec![1, 1, 0], value.serialize());
+        let value = TrackerTag::QueryID(BigIntPayload(3225));
+        assert_eq!(vec![2, 4, 0, 0, 12, 153], value.serialize());
+        let value = TrackerTag::QueryString(RawStringPayload(vec![115, 105, 108, 118, 101, 114, 102, 111, 120]));
+        assert_eq!(vec![3, 9, 115, 105, 108, 118, 101, 114, 102, 111, 120], value.serialize());
+        let value = TrackerTag::HostDomain(RawStringPayload(vec![112, 108, 97, 121, 97, 118, 97, 114, 97, 46, 110, 101, 116]));
+        assert_eq!(vec![4, 13, 112, 108, 97, 121, 97, 118, 97, 114, 97, 46, 110, 101, 116], value.serialize());
+        let value = TrackerTag::ResponseIndex(IntPayload(499));
+        assert_eq!(vec![5, 2, 1, 243], value.serialize());
+        let value = TrackerTag::ResponseCount(IntPayload(500));
+        assert_eq!(vec![6, 2, 1, 244], value.serialize());
+        let value = TrackerTag::StatusMessage(RawStringPayload(vec![82, 101, 97, 100, 121, 46]));
+        assert_eq!(vec![7, 6, 82, 101, 97, 100, 121, 46], value.serialize());
+        let value = TrackerTag::InfoMessage(RawStringPayload(vec![87, 105, 100, 101, 32, 79, 112, 101, 110, 32, 83, 111, 117, 114, 99, 101, 115]));
+        assert_eq!(vec![8, 17, 87, 105, 100, 101, 32, 79, 112, 101, 110, 32, 83, 111, 117, 114, 99, 101, 115], value.serialize());
+        let value = TrackerTag::Invitation(RawStringPayload(vec![73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101]));
+        assert_eq!(vec![9, 18, 73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101], value.serialize());
+        let value = TrackerTag::HasPassword;
+        assert_eq!(vec![10, 0], value.serialize());
+        let value = TrackerTag::PlayerLimit(SmallIntPayload(6));
+        assert_eq!(vec![11, 1, 6], value.serialize());
+        let value = TrackerTag::GameStatus(GameStatusPayload(GameStatus::Active));
+        assert_eq!(vec![12, 1, 2], value.serialize());
+        let value = TrackerTag::LevelDirectory(RawStringPayload(vec![65, 65, 32, 78, 111, 114, 109, 97, 108]));
+        assert_eq!(vec![13, 9, 65, 65, 32, 78, 111, 114, 109, 97, 108], value.serialize());
+        let value = TrackerTag::LevelName(RawStringPayload(vec![67, 111, 114, 111, 109, 111, 114, 97, 110]));
+        assert_eq!(vec![14, 9, 67, 111, 114, 111, 109, 111, 114, 97, 110], value.serialize());
+        let value = TrackerTag::ProtocolVersion(IntPayload(6));
+        assert_eq!(vec![15, 2, 0, 6], value.serialize());
+        let value = TrackerTag::SoftwareVersion(RawStringPayload(vec![49, 46, 48, 46, 50]));
+        assert_eq!(vec![16, 5, 49, 46, 48, 46, 50], value.serialize());
+        let value = TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(
+            PlayerId::new(0),
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)
+        ));
+        assert_eq!(vec![255, 7, 0, 10, 0, 2, 15, 76, 111], value.serialize());
+        let value = TrackerTag::PlayerNick(IndexedRawStringPayload(
+            PlayerId::new(0),
+            RawStringPayload(vec![115, 105, 108, 118, 101, 114, 102, 111, 120])
+        ));
+        assert_eq!(vec![254, 10, 0, 115, 105, 108, 118, 101, 114, 102, 111, 120], value.serialize());
+        let value = TrackerTag::PlayerLives(IndexedIntPayload(PlayerId::new(0), IntPayload(3)));
+        assert_eq!(vec![253, 3, 0, 0, 3], value.serialize());
+        let value = TrackerTag::PlayerLocation(IndexedLocationPayload(
+            PlayerId::new(0),
+            IntPayload(7_233),
+            IntPayload(46_424)
+        ));
+        assert_eq!(vec![252, 5, 0, 28, 65, 181, 88], value.serialize());
     }
 }

@@ -580,6 +580,59 @@ mod tests {
     }
 
     #[test]
+    fn parse_trackertag() {
+        let assert_tag_parses = |bytes: &[u8]| {
+            let result = TrackerTag::try_parse(&bytes);
+            assert!(result.is_ok());
+        };
+        let bytes = [1, 1, 0];
+        assert_tag_parses(&bytes);
+        let bytes = [2, 4, 0, 0, 12, 153];
+        assert_tag_parses(&bytes);
+        let bytes = [3, 9, 115, 105, 108, 118, 101, 114, 102, 111, 120];
+        assert_tag_parses(&bytes);
+        let bytes = [4, 13, 112, 108, 97, 121, 97, 118, 97, 114, 97, 46, 110, 101, 116];
+        assert_tag_parses(&bytes);
+        let bytes = [5, 2, 1, 243];
+        assert_tag_parses(&bytes);
+        let bytes = [6, 2, 1, 244];
+        assert_tag_parses(&bytes);
+        let bytes = [7, 6, 82, 101, 97, 100, 121, 46];
+        assert_tag_parses(&bytes);
+        let bytes = [8, 17, 87, 105, 100, 101, 32, 79, 112, 101, 110, 32, 83, 111, 117, 114, 99, 101, 115];
+        assert_tag_parses(&bytes);
+        let bytes = [9, 18, 73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101];
+        assert_tag_parses(&bytes);
+        let bytes = [10, 0];
+        assert_tag_parses(&bytes);
+        let bytes = [11, 1, 6];
+        assert_tag_parses(&bytes);
+        let bytes = [12, 1, 2];
+        assert_tag_parses(&bytes);
+        let bytes = [13, 9, 65, 65, 32, 78, 111, 114, 109, 97, 108];
+        assert_tag_parses(&bytes);
+        let bytes = [14, 9, 67, 111, 114, 111, 109, 111, 114, 97, 110];
+        assert_tag_parses(&bytes);
+        let bytes = [15, 2, 0, 6];
+        assert_tag_parses(&bytes);
+        let bytes = [16, 5, 49, 46, 48, 46, 50];
+        assert_tag_parses(&bytes);
+        let bytes = [255, 7, 0, 10, 0, 2, 15, 76, 111];
+        assert_tag_parses(&bytes);
+        let bytes = [254, 10, 0, 115, 105, 108, 118, 101, 114, 102, 111, 120];
+        assert_tag_parses(&bytes);
+        let bytes = [253, 3, 0, 0, 3];
+        assert_tag_parses(&bytes);
+        let bytes = [252, 5, 0, 28, 65, 181, 88];
+        assert_tag_parses(&bytes);
+
+        let bytes = [17, 0];
+        let result = TrackerTag::try_parse(&bytes);
+        assert!(result.is_err());
+        assert_eq!(Error::InvalidTag, result.unwrap_err());
+    }
+
+    #[test]
     fn datagram_missing_protocol_version() {
         let bytes = [16, 5, 49, 46, 48, 46, 50, 1, 1, 0, 252, 5, 0, 28, 65, 181, 88,
                      2, 4, 0, 0, 12, 153, 6, 2, 1, 244, 3, 0];
