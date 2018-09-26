@@ -164,6 +164,23 @@ impl Serialize for TrackerTag {
     }
 }
 
+impl Serialize for Datagram {
+    fn serialize(&self) -> Vec<u8> {
+        let mut protocol_version = TrackerTag::ProtocolVersion(IntPayload(self.protocol_version))
+            .serialize();
+        let mut command = TrackerTag::Command(CommandPayload(self.command.clone()))
+            .serialize();
+        let mut value = Vec::with_capacity(7);
+        value.append(&mut protocol_version);
+        value.append(&mut command);
+        for tag in &self.tags {
+            let mut tag = tag.serialize();
+            value.append(&mut tag);
+        }
+        value
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::net::{Ipv4Addr, SocketAddr};
@@ -317,5 +334,48 @@ mod tests {
             IntPayload(46_424)
         ));
         assert_eq!(vec![252, 5, 0, 28, 65, 181, 88], value.serialize());
+    }
+
+    #[test]
+    fn serialize_datagram() {
+        let mut value = Datagram::new(Command::Hello);
+        value.add_tag(TrackerTag::SoftwareVersion(RawStringPayload(vec![49, 46, 48, 46, 50])));
+        value.add_tag(TrackerTag::PlayerLimit(SmallIntPayload(6)));
+        value.add_tag(TrackerTag::Invitation(RawStringPayload(vec![73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101])));
+        value.add_tag(TrackerTag::HasPassword);
+        value.add_tag(TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(
+            PlayerId::new(0),
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)
+        )));
+        value.add_tag(TrackerTag::LevelDirectory(RawStringPayload(vec![65, 65, 32, 78, 111, 114, 109, 97, 108])));
+        value.add_tag(TrackerTag::LevelName(RawStringPayload(vec![67, 111, 114, 111, 109, 111, 114, 97, 110])));
+        value.add_tag(TrackerTag::GameStatus(GameStatusPayload(GameStatus::Active)));
+        value.add_tag(TrackerTag::PlayerNick(IndexedRawStringPayload(
+            PlayerId::new(0),
+            RawStringPayload(vec![115, 105, 108, 118, 101, 114, 102, 111, 120])
+        )));
+        value.add_tag(TrackerTag::PlayerLocation(IndexedLocationPayload(
+            PlayerId::new(0),
+            IntPayload(7_233),
+            IntPayload(46_424)
+        )));
+        value.add_tag(TrackerTag::PlayerLives(IndexedIntPayload(PlayerId::new(0), IntPayload(3))));
+
+        let expected = vec![
+            15, 2, 0, 6,
+            1, 1, 2,
+            16, 5, 49, 46, 48, 46, 50,
+            11, 1, 6,
+            9, 18, 73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101,
+            10, 0,
+            255, 7, 0, 10, 0, 2, 15, 76, 111,
+            13, 9, 65, 65, 32, 78, 111, 114, 109, 97, 108,
+            14, 9, 67, 111, 114, 111, 109, 111, 114, 97, 110,
+            12, 1, 2,
+            254, 10, 0, 115, 105, 108, 118, 101, 114, 102, 111, 120,
+            252, 5, 0, 28, 65, 181, 88,
+            253, 3, 0, 0, 3
+        ];
+        assert_eq!(expected, value.serialize());
     }
 }
