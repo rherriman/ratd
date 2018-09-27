@@ -27,6 +27,7 @@ pub enum Error {
     UnexpectedDatagramBoundary = 1,
     MissingProtocolVersion,
     MissingCommand,
+    MissingQueryID,
     InvalidTag,
     InvalidCommand,
     InvalidGameStatus,
@@ -42,6 +43,8 @@ impl fmt::Display for Error {
                 write!(f, "Datagram contained no protocol version information"),
             Error::MissingCommand =>
                 write!(f, "Datagram contained no command tag"),
+            Error::MissingQueryID =>
+                write!(f, "Datagram contained no query id when it was required"),
             Error::InvalidTag =>
                 write!(f, "Invalid tag encountered"),
             Error::InvalidCommand =>
@@ -245,6 +248,7 @@ impl TryParse for Datagram {
     fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         let mut protocol_version = None;
         let mut command = None;
+        let mut query_id = None;
         let mut tags = Vec::new();
         let mut start_idx = 0;
         let byte_len = bytes.len();
@@ -268,6 +272,7 @@ impl TryParse for Datagram {
 
             let tag = TrackerTag::try_parse(&bytes[start_idx..rbound])?;
             match tag {
+                TrackerTag::QueryID(BigIntPayload(id)) => query_id = Some(id),
                 TrackerTag::ProtocolVersion(IntPayload(vers)) => protocol_version = Some(vers),
                 TrackerTag::Command(CommandPayload(comm)) => command = Some(comm),
                 _ => tags.push(tag),
@@ -277,8 +282,11 @@ impl TryParse for Datagram {
 
         let protocol_version = protocol_version.ok_or(Error::MissingProtocolVersion)?;
         let command = command.ok_or(Error::MissingCommand)?;
+        if (command == Command::Query || command == Command::Response) && query_id.is_none() {
+            return Err(Error::MissingQueryID);
+        }
 
-        Ok(Datagram { protocol_version, command, tags })
+        Ok(Datagram { protocol_version, command, query_id, tags })
     }
 }
 
@@ -651,11 +659,21 @@ mod tests {
     }
 
     #[test]
+    fn datagram_missing_query_id() {
+        let bytes = [15, 2, 0, 6, 16, 5, 49, 46, 48, 46, 50, 1, 1, 0, 252, 5, 0, 28, 65, 181, 88,
+                     6, 2, 1, 244, 3, 0];
+        let datagram = Datagram::try_parse(&bytes);
+        assert!(datagram.is_err());
+        assert_eq!(Error::MissingQueryID, datagram.unwrap_err());
+    }
+
+    #[test]
     fn datagram_ignore_null_tags() {
         let bytes = [15, 2, 0, 6,
                      /* Null tag: */ 0,
                      1, 1, 0,
                      6, 2, 1, 244,
+                     2, 4, 0, 0, 12, 153,
                      /* TWO null tags: */ 0, 0,
                      3, 0];
         let datagram = Datagram::try_parse(&bytes);
@@ -675,7 +693,8 @@ mod tests {
         let datagram = datagram.unwrap();
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Query, datagram.command);
-        assert_eq!(5, datagram.tags.len());
+        assert_eq!(Some(3225), datagram.query_id);
+        assert_eq!(4, datagram.tags.len());
     }
 
     #[test]

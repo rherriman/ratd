@@ -166,13 +166,21 @@ impl Serialize for TrackerTag {
 
 impl Serialize for Datagram {
     fn serialize(&self) -> Vec<u8> {
+        let mut size = 7;
         let mut protocol_version = TrackerTag::ProtocolVersion(IntPayload(self.protocol_version))
             .serialize();
         let mut command = TrackerTag::Command(CommandPayload(self.command))
             .serialize();
-        let mut value = Vec::with_capacity(7);
+        let mut query_id = if let Some(query_id) = self.query_id {
+            size += 6;
+            TrackerTag::QueryID(BigIntPayload(query_id)).serialize()
+        } else {
+            vec![]
+        };
+        let mut value = Vec::with_capacity(size);
         value.append(&mut protocol_version);
         value.append(&mut command);
+        value.append(&mut query_id);
         for tag in &self.tags {
             let mut tag = tag.serialize();
             value.append(&mut tag);
@@ -338,7 +346,32 @@ mod tests {
     }
 
     #[test]
-    fn serialize_datagram() {
+    fn serialize_query_datagram() {
+        let mut value = Datagram::new(Command::Query);
+        value.set_query_id(Some(3225));
+        value.add_tag(TrackerTag::SoftwareVersion(RawStringPayload(vec![49, 46, 48, 46, 50])));
+        value.add_tag(TrackerTag::PlayerLocation(IndexedLocationPayload(
+            PlayerId::new(0),
+            IntPayload(7_233),
+            IntPayload(46_424)
+        )));
+        value.add_tag(TrackerTag::ResponseCount(IntPayload(500)));
+        value.add_tag(TrackerTag::QueryString(RawStringPayload(vec![])));
+
+        let expected = vec![
+            15, 2, 0, 6,
+            1, 1, 0,
+            2, 4, 0, 0, 12, 153,
+            16, 5, 49, 46, 48, 46, 50,
+            252, 5, 0, 28, 65, 181, 88,
+            6, 2, 1, 244,
+            3, 0
+        ];
+        assert_eq!(expected, value.serialize());
+    }
+
+    #[test]
+    fn serialize_hello_datagram() {
         let mut value = Datagram::new(Command::Hello);
         value.add_tag(TrackerTag::SoftwareVersion(RawStringPayload(vec![49, 46, 48, 46, 50])));
         value.add_tag(TrackerTag::PlayerLimit(SmallIntPayload(6)));

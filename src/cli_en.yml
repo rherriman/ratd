@@ -9,6 +9,10 @@ args:
         short: p
         long: port
         takes_value: true
+    - verbose:
+        help: turns on verbose logging
+        short: v
+        long: verbose
     - workers:
         help: the number of threads allocated for request processing
         short: w

@@ -2,6 +2,7 @@ pub mod parse;
 pub mod serialize;
 
 use std::{
+    cmp,
     collections::HashMap,
     net::SocketAddr,
     sync::RwLock,
@@ -106,13 +107,14 @@ impl TrackerTag {
 pub struct Datagram {
     protocol_version: u16,
     command: Command,
+    query_id: Option<u32>,
     tags: Vec<TrackerTag>,
 }
 
 impl Datagram {
     pub fn new(command: Command) -> Datagram {
         let tags = Vec::new();
-        Datagram { protocol_version: PROTOCOL_VERSION, command, tags }
+        Datagram { protocol_version: PROTOCOL_VERSION, command, query_id: None, tags }
     }
 
     pub fn add_tag(&mut self, tag: TrackerTag) {
@@ -125,6 +127,14 @@ impl Datagram {
 
     pub fn get_protocol_version(&self) -> u16 {
         self.protocol_version
+    }
+
+    pub fn get_query_id(&self) -> Option<u32> {
+        self.query_id
+    }
+
+    pub fn set_query_id(&mut self, query_id: Option<u32>) {
+        self.query_id = query_id;
     }
 }
 
@@ -171,6 +181,33 @@ impl LobbyList {
 
     pub fn remove(&self, key: &SocketAddr) {
         self.list.write().unwrap().remove(key);
+    }
+
+    pub fn search(&self, term: Option<&str>, query_id: u32, limit: u16) -> Vec<Vec<u8>> {
+        let list = self.list.read().unwrap();
+        let size = cmp::min(list.len(), usize::from(limit));
+        let response_count = size as u16;
+        let mut responses = Vec::with_capacity(size);
+
+        // TODO: ACTUALLY FILTER, ATTACH INFO/STATUS MESSAGES
+
+        if size == 0 {
+            let mut datagram = Datagram::new(Command::Response);
+            datagram.set_query_id(Some(query_id));
+            datagram.add_tag(TrackerTag::ResponseCount(IntPayload(response_count)));
+            responses.push(datagram.serialize());
+        } else {
+            let filtered_list = match term {
+                Some(term) => list.iter().take(size),
+                None => list.iter().take(size),
+            };
+            for (idx, (_, lobby)) in filtered_list.enumerate() {
+                let response_index = idx as u16;
+                responses.push(lobby.as_response(query_id, response_index, response_count));
+            }
+        }
+
+        responses
     }
 }
 
@@ -239,6 +276,15 @@ mod tests {
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Hello, datagram.command);
         assert_eq!(1, datagram.tags.len());
+    }
+
+    #[test]
+    fn datagram_query_id_getter_and_setter() {
+        let command = Command::Response;
+        let mut datagram = Datagram::new(command);
+        assert_eq!(None, datagram.get_query_id());
+        datagram.set_query_id(Some(3225));
+        assert_eq!(Some(3225), datagram.get_query_id());
     }
 
     #[test]
