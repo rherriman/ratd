@@ -50,7 +50,7 @@ impl Server {
                 if verbose {
                     println!("Size: {}", size);
                     println!("Source Address: {}", src);
-                    println!("Bytes: {:?}", contents);
+                    println!("Bytes: {:?}\n", contents);
                 }
 
                 let result = Datagram::try_parse(contents);
