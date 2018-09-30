@@ -161,6 +161,7 @@ impl Lobby {
         }
         let modified = Instant::now();
         let mut response = Datagram::new(Command::Response);
+        response.host_address = datagram.host_address;
         response.tags = datagram.tags.clone();
         Lobby { preserialized: response.serialize(), modified }
     }
