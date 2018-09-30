@@ -1,3 +1,4 @@
+pub mod datagram;
 pub mod parse;
 pub mod serialize;
 
@@ -136,6 +137,14 @@ impl Datagram {
     pub fn set_query_id(&mut self, query_id: Option<u32>) {
         self.query_id = query_id;
     }
+}
+
+pub struct Player {
+    id: PlayerId,
+    net_address: SocketAddr,
+    nickname: Vec<u8>,
+    lives: u16,
+    location: (u16, u16),
 }
 
 pub struct Lobby {
