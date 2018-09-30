@@ -45,7 +45,7 @@ pub struct SmallIntPayload(u8);
 #[derive(Debug, Clone)]
 pub struct RawStringPayload(Vec<u8>);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerId {
     id: u8,
 }
@@ -107,17 +107,28 @@ impl TrackerTag {
 pub struct Datagram {
     protocol_version: u16,
     command: Command,
+    host_address: Option<SocketAddr>,
     query_id: Option<u32>,
     tags: Vec<TrackerTag>,
 }
 
 impl Datagram {
     pub fn new(command: Command) -> Datagram {
-        let tags = Vec::new();
-        Datagram { protocol_version: PROTOCOL_VERSION, command, query_id: None, tags }
+        Datagram {
+            protocol_version: PROTOCOL_VERSION,
+            command,
+            host_address: None,
+            query_id: None,
+            tags: Vec::new()
+        }
     }
 
     pub fn add_tag(&mut self, tag: TrackerTag) {
+        if let TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(id, addr)) = tag {
+            if id == PlayerId::new(0) {
+                self.host_address = Some(addr);
+            }
+        }
         self.tags.push(tag);
     }
 

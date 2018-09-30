@@ -1,5 +1,7 @@
 use std::net::IpAddr;
 
+use dns_lookup::getnameinfo;
+
 use super::{
     CommandPayload,
     GameStatusPayload,
@@ -171,6 +173,18 @@ impl Serialize for Datagram {
             .serialize();
         let mut command = TrackerTag::Command(CommandPayload(self.command))
             .serialize();
+        let mut host_domain = if let Some(host_address) = self.host_address {
+            if let Ok((name, _)) = getnameinfo(&host_address, 0) {
+                let mut domain = name.into_bytes();
+                let mut domain_tag = vec![4, domain.len() as u8];
+                domain_tag.append(&mut domain);
+                domain_tag
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        };
         let mut query_id = if let Some(query_id) = self.query_id {
             size += 6;
             TrackerTag::QueryID(BigIntPayload(query_id)).serialize()
@@ -180,6 +194,7 @@ impl Serialize for Datagram {
         let mut value = Vec::with_capacity(size);
         value.append(&mut protocol_version);
         value.append(&mut command);
+        value.append(&mut host_domain);
         value.append(&mut query_id);
         for tag in &self.tags {
             let mut tag = tag.serialize();
@@ -398,6 +413,7 @@ mod tests {
         let expected = vec![
             15, 2, 0, 6,
             1, 1, 2,
+            4, 9, 49, 48, 46, 48, 46, 50, 46, 49, 53,
             16, 5, 49, 46, 48, 46, 50,
             11, 1, 6,
             9, 18, 73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101,

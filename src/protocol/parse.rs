@@ -248,6 +248,7 @@ impl TryParse for Datagram {
     fn try_parse(bytes: &[u8]) -> Result<Self, Error> {
         let mut protocol_version = None;
         let mut command = None;
+        let mut host_address = None;
         let mut query_id = None;
         let mut tags = Vec::new();
         let mut start_idx = 0;
@@ -272,9 +273,15 @@ impl TryParse for Datagram {
 
             let tag = TrackerTag::try_parse(&bytes[start_idx..rbound])?;
             match tag {
+                TrackerTag::Command(CommandPayload(comm)) => command = Some(comm),
                 TrackerTag::QueryID(BigIntPayload(id)) => query_id = Some(id),
                 TrackerTag::ProtocolVersion(IntPayload(vers)) => protocol_version = Some(vers),
-                TrackerTag::Command(CommandPayload(comm)) => command = Some(comm),
+                TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(id, addr)) => {
+                    if id == PlayerId::new(0) {
+                        host_address = Some(addr);
+                    }
+                    tags.push(tag);
+                },
                 _ => tags.push(tag),
             }
             start_idx = rbound;
@@ -286,7 +293,7 @@ impl TryParse for Datagram {
             return Err(Error::MissingQueryID);
         }
 
-        Ok(Datagram { protocol_version, command, query_id, tags })
+        Ok(Datagram { protocol_version, command, host_address, query_id, tags })
     }
 }
 
@@ -705,6 +712,10 @@ mod tests {
         let datagram = datagram.unwrap();
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Hello, datagram.command);
+        assert_eq!(
+            Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)),
+            datagram.host_address
+        );
         assert_eq!(7, datagram.tags.len());
     }
 
@@ -716,6 +727,10 @@ mod tests {
         let datagram = datagram.unwrap();
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Hello, datagram.command);
+        assert_eq!(
+            Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)),
+            datagram.host_address
+        );
         assert_eq!(11, datagram.tags.len());
     }
 
@@ -727,6 +742,10 @@ mod tests {
         let datagram = datagram.unwrap();
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Goodbye, datagram.command);
+        assert_eq!(
+            Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)),
+            datagram.host_address
+        );
         assert_eq!(11, datagram.tags.len());
     }
 }
