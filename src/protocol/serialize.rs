@@ -208,7 +208,7 @@ impl Serialize for Datagram {
 mod tests {
     use std::net::{Ipv4Addr, SocketAddr};
 
-    use ::protocol::{Command, GameStatus};
+    use crate::protocol::{Command, GameStatus};
     use super::*;
 
     #[test]

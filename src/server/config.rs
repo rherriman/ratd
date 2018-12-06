@@ -3,7 +3,7 @@ use std::{
     num::NonZeroUsize
 };
 
-use clap::ArgMatches;
+use clap::{ArgMatches, value_t};
 
 #[derive(Debug)]
 pub enum Error {

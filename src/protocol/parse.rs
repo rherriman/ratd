@@ -299,7 +299,7 @@ impl TryParse for Datagram {
 
 #[cfg(test)]
 mod tests {
-    use ::protocol::PROTOCOL_VERSION;
+    use crate::protocol::PROTOCOL_VERSION;
     use super::*;
 
     const TEST_QUERY: [u8; 33] = [

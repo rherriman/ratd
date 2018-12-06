@@ -210,7 +210,7 @@ impl LobbyList {
             responses.push(datagram.serialize());
         } else {
             let filtered_list = match term {
-                Some(term) => list.iter().take(size),
+                Some(_term) => list.iter().take(size),
                 None => list.iter().take(size),
             };
             for (idx, (_, lobby)) in filtered_list.enumerate() {

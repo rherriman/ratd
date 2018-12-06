@@ -1,11 +1,6 @@
-#[macro_use]
-extern crate clap;
-
-extern crate ratd;
-
 use std::process;
 
-use clap::App;
+use clap::{App, load_yaml};
 
 use ratd::server::{
     Server,
