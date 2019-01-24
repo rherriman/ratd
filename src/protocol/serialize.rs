@@ -38,28 +38,13 @@ impl Serialize for GameStatusPayload {
 
 impl Serialize for BigIntPayload {
     fn serialize(&self) -> Vec<u8> {
-        let value = if cfg!(target_endian = "little") {
-            self.0
-        } else {
-            self.0.swap_bytes()
-        };
-        vec![
-            (value >> 24) as u8,
-            ((value >> 16) & 0xff) as u8,
-            ((value >> 8) & 0xff) as u8,
-            (value & 0xff) as u8
-        ]
+        self.0.to_be_bytes().to_vec()
     }
 }
 
 impl Serialize for IntPayload {
     fn serialize(&self) -> Vec<u8> {
-        let value = if cfg!(target_endian = "little") {
-            self.0
-        } else {
-            self.0.swap_bytes()
-        };
-        vec![(value >> 8) as u8, (value & 0xff) as u8]
+        self.0.to_be_bytes().to_vec()
     }
 }
 
@@ -88,12 +73,7 @@ impl Serialize for IndexedSocketAddrPayload {
             IpAddr::V4(ip) => ip.octets().to_vec(),
             IpAddr::V6(ip) => ip.octets().to_vec(),
         };
-        let port = if cfg!(target_endian = "little") {
-            self.1.port()
-        } else {
-            self.1.port().swap_bytes()
-        };
-        let mut port = vec![(port >> 8) as u8, (port & 0xff) as u8];
+        let mut port = self.1.port().to_be_bytes().to_vec();
         value.append(&mut self.0.serialize());
         value.append(&mut ip);
         value.append(&mut port);
