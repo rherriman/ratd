@@ -9,6 +9,11 @@ args:
         short: p
         long: port
         takes_value: true
+    - timeout:
+        help: the number of minutes to wait before removing lobbies that haven't communicated for awhile
+        short: t
+        long: timeout
+        takes_value: true
     - verbose:
         help: turns on verbose logging
         short: v
