@@ -398,7 +398,7 @@ mod tests {
     fn parse_commandpayload() {
         let bytes = [0, 1, 2, 3, /* Not valid: */ 4];
         for i in 0..bytes.len() - 1 {
-            assert!(CommandPayload::try_parse(&bytes[i..i + 1]).is_ok());
+            assert!(CommandPayload::try_parse(&bytes[i..=i]).is_ok());
         }
         assert!(CommandPayload::try_parse(&bytes[..2]).is_err());
         assert!(CommandPayload::try_parse(&bytes[4..]).is_err());
@@ -408,7 +408,7 @@ mod tests {
     fn parse_gamestatuspayload() {
         let bytes = [0, 1, 2, 3, /* Not valid: */ 4];
         for i in 0..bytes.len() - 1 {
-            assert!(GameStatusPayload::try_parse(&bytes[i..i + 1]).is_ok());
+            assert!(GameStatusPayload::try_parse(&bytes[i..=i]).is_ok());
         }
         assert!(GameStatusPayload::try_parse(&bytes[..2]).is_err());
         assert!(GameStatusPayload::try_parse(&bytes[4..]).is_err());

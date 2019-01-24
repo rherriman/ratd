@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    num::NonZeroUsize
+    num::NonZeroU8
 };
 
 use clap::{ArgMatches, value_t};
@@ -8,6 +8,7 @@ use clap::{ArgMatches, value_t};
 #[derive(Debug)]
 pub enum Error {
     InvalidPortNumber = 1,
+    InvalidLobbyTimeout,
     InvalidWorkerCount,
     SocketBindFailure,
 }
@@ -17,8 +18,10 @@ impl fmt::Display for Error {
         match self {
             Error::InvalidPortNumber =>
                 write!(f, "Port must be a number between 0 and 65535"),
+            Error::InvalidLobbyTimeout =>
+                write!(f, "Lobby timeout must be a number between 0 and 255"),
             Error::InvalidWorkerCount =>
-                write!(f, "Worker count must be a number greater than 0"),
+                write!(f, "Worker count must be a number between 0 and 255"),
             Error::SocketBindFailure =>
                 write!(f, "Couldn't bind to address"),
         }
@@ -28,8 +31,9 @@ impl fmt::Display for Error {
 #[derive(Clone, Copy)]
 pub struct Config {
     pub port: u16,
+    pub timeout: NonZeroU8,
     pub verbose: bool,
-    pub workers: NonZeroUsize,
+    pub workers: NonZeroU8,
 }
 
 impl Config {
@@ -40,18 +44,31 @@ impl Config {
             config.port = value_t!(args, "port", u16).map_err(|_| Error::InvalidPortNumber)?;
         }
 
+        if args.is_present("timeout") {
+            config.timeout = match value_t!(args, "timeout", u8) {
+                Ok(expiration_threshold) => {
+                    if expiration_threshold == 0 {
+                        return Err(Error::InvalidLobbyTimeout);
+                    }
+
+                    NonZeroU8::new(expiration_threshold).unwrap()
+                },
+                Err(_) => return Err(Error::InvalidLobbyTimeout),
+            };
+        }
+
         if args.is_present("verbose") {
             config.verbose = true;
         }
 
         if args.is_present("workers") {
-            config.workers = match value_t!(args, "workers", usize) {
+            config.workers = match value_t!(args, "workers", u8) {
                 Ok(workers) => {
                     if workers == 0 {
                         return Err(Error::InvalidWorkerCount);
                     }
 
-                    NonZeroUsize::new(workers).unwrap()
+                    NonZeroU8::new(workers).unwrap()
                 },
                 Err(_) => return Err(Error::InvalidWorkerCount),
             };
@@ -65,8 +82,9 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             port: 21541,
+            timeout: NonZeroU8::new(5).unwrap(),
             verbose: false,
-            workers: NonZeroUsize::new(4).unwrap(),
+            workers: NonZeroU8::new(4).unwrap(),
         }
     }
 }

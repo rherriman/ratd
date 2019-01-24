@@ -6,7 +6,7 @@ use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::RwLock,
-    time::Instant
+    time::{Duration, Instant}
 };
 
 use self::serialize::Serialize;
@@ -187,6 +187,18 @@ impl LobbyList {
         LobbyList { list }
     }
 
+    pub fn cleanup(&self, expiration_threshold: Duration) {
+        let to_delete = self.list.read().unwrap().iter()
+            .filter(|(_, lobby)| lobby.modified.elapsed() >= expiration_threshold)
+            .map(|(k, _)| *k)
+            .collect::<Vec<SocketAddr>>();
+
+        let mut list = self.list.write().unwrap();
+        for k in to_delete {
+            list.remove(&k);
+        }
+    }
+
     pub fn insert(&self, key: &SocketAddr, datagram: &Datagram) {
         self.list.write().unwrap().insert(*key, Lobby::new(datagram));
     }
@@ -345,5 +357,28 @@ mod tests {
 
         lobby_list.remove(&addr);
         assert_eq!(0, lobby_list.list.read().unwrap().len());
+    }
+
+    #[test]
+    fn lobbylist_cleanup() {
+        let lobby_list = LobbyList::new();
+        assert_eq!(0, lobby_list.list.read().unwrap().len());
+
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567);
+        let addr_2 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 16)), 19567);
+        let datagram = build_hello();
+        let duration = Duration::from_secs(30);
+
+        lobby_list.insert(&addr, &datagram);
+        lobby_list.insert(&addr_2, &datagram);
+        {
+            let mut raw_list = lobby_list.list.write().unwrap();
+            let lobby = raw_list.get_mut(&addr).unwrap();
+            lobby.modified -= duration;
+        }
+        assert_eq!(2, lobby_list.list.read().unwrap().len());
+
+        lobby_list.cleanup(duration);
+        assert_eq!(1, lobby_list.list.read().unwrap().len());
     }
 }

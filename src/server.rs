@@ -3,7 +3,9 @@ pub mod threading;
 
 use std::{
     net::{SocketAddr, UdpSocket},
-    sync::Arc
+    sync::Arc,
+    thread,
+    time::Duration
 };
 
 use super::protocol::{
@@ -16,6 +18,7 @@ use self::{
 };
 
 pub struct Server {
+    expiration_threshold: Duration,
     lobby_list: Arc<LobbyList>,
     socket: Arc<UdpSocket>,
     thread_pool: ThreadPool,
@@ -24,15 +27,27 @@ pub struct Server {
 
 impl Server {
     pub fn new(config: Config) -> Result<Server, Error> {
+        let timeout_seconds = 60 * u64::from(config.timeout.get());
+        let expiration_threshold = Duration::from_secs(timeout_seconds);
         let lobby_list = Arc::new(LobbyList::new());
         let address = SocketAddr::from(([0; 4], config.port));
         let socket = Arc::new(UdpSocket::bind(address).map_err(|_| Error::SocketBindFailure)?);
         let thread_pool = ThreadPool::new(config.workers);
         let verbose_logging = config.verbose;
-        Ok(Server { lobby_list, socket, thread_pool, verbose_logging })
+        Ok(Server { expiration_threshold, lobby_list, socket, thread_pool, verbose_logging })
     }
 
     pub fn run(&self) {
+        let cleanup_sleep_time = Duration::from_secs(15);
+        let expiration_threshold = self.expiration_threshold;
+        let lobby_list = Arc::clone(&self.lobby_list);
+        thread::spawn(move || {
+            loop {
+                lobby_list.cleanup(expiration_threshold);
+                thread::sleep(cleanup_sleep_time);
+            }
+        });
+
         loop {
             let mut buffer = [0; 8192];
             let (size, src) = match self.socket.recv_from(&mut buffer) {

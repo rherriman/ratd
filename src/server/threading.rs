@@ -1,5 +1,5 @@
 use std::{
-    num::NonZeroUsize,
+    num::NonZeroU8,
     sync::{Arc, mpsc, Mutex},
     thread
 };
@@ -13,12 +13,12 @@ impl ThreadPool {
     /// Create a new ThreadPool.
     ///
     /// The size is the number of threads in the pool.
-    pub fn new(size: NonZeroUsize) -> ThreadPool {
+    pub fn new(size: NonZeroU8) -> ThreadPool {
         let (sender, receiver) = mpsc::channel();
         let receiver = Arc::new(Mutex::new(receiver));
 
         let size = size.get();
-        let mut workers = Vec::with_capacity(size);
+        let mut workers = Vec::with_capacity(size.into());
         for id in 1..=size {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
@@ -54,12 +54,12 @@ impl Drop for ThreadPool {
 }
 
 struct Worker {
-    id: usize,
+    id: u8,
     thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
+    fn new(id: u8, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || {
             loop {
                 let message = receiver.lock().unwrap().recv().unwrap();
