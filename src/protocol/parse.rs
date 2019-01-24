@@ -103,13 +103,7 @@ impl TryParse for BigIntPayload {
             return Err(Error::InvalidTag);
         }
 
-        let combined = if cfg!(target_endian = "big") {
-            ((u32::from(bytes[3]) << 24) | (u32::from(bytes[2]) << 16) |
-             (u32::from(bytes[1]) << 8) | u32::from(bytes[0]))
-        } else {
-            ((u32::from(bytes[0]) << 24) | (u32::from(bytes[1]) << 16) |
-             (u32::from(bytes[2]) << 8) | u32::from(bytes[3]))
-        };
+        let combined = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
         Ok(BigIntPayload(combined))
     }
 }
@@ -120,11 +114,7 @@ impl TryParse for IntPayload {
             return Err(Error::InvalidTag);
         }
 
-        let combined = if cfg!(target_endian = "big") {
-            (u16::from(bytes[1]) << 8) | u16::from(bytes[0])
-        } else {
-            (u16::from(bytes[0]) << 8) | u16::from(bytes[1])
-        };
+        let combined = u16::from_be_bytes([bytes[0], bytes[1]]);
         Ok(IntPayload(combined))
     }
 }
