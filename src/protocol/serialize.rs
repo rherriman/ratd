@@ -123,7 +123,7 @@ impl Serialize for TrackerTag {
     fn serialize(&self) -> Vec<u8> {
         match self {
             TrackerTag::Command(payload) => pack_tag(1, payload),
-            TrackerTag::QueryID(payload) => pack_tag(2, payload),
+            TrackerTag::QueryId(payload) => pack_tag(2, payload),
             TrackerTag::QueryString(payload) => pack_tag(3, payload),
             TrackerTag::HostDomain(payload) => pack_tag(4, payload),
             TrackerTag::ResponseIndex(payload) => pack_tag(5, payload),
@@ -138,7 +138,7 @@ impl Serialize for TrackerTag {
             TrackerTag::LevelName(payload) => pack_tag(14, payload),
             TrackerTag::ProtocolVersion(payload) => pack_tag(15, payload),
             TrackerTag::SoftwareVersion(payload) => pack_tag(16, payload),
-            TrackerTag::PlayerIPPort(payload) => pack_tag(255, payload),
+            TrackerTag::PlayerIpPort(payload) => pack_tag(255, payload),
             TrackerTag::PlayerNick(payload) => pack_tag(254, payload),
             TrackerTag::PlayerLives(payload) => pack_tag(253, payload),
             TrackerTag::PlayerLocation(payload) => pack_tag(252, payload),
@@ -167,7 +167,7 @@ impl Serialize for Datagram {
         };
         let mut query_id = if let Some(query_id) = self.query_id {
             size += 6;
-            TrackerTag::QueryID(BigIntPayload(query_id)).serialize()
+            TrackerTag::QueryId(BigIntPayload(query_id)).serialize()
         } else {
             vec![]
         };
@@ -290,7 +290,7 @@ mod tests {
     fn serialize_trackertag() {
         let value = TrackerTag::Command(CommandPayload(Command::Query));
         assert_eq!(vec![1, 1, 0], value.serialize());
-        let value = TrackerTag::QueryID(BigIntPayload(3225));
+        let value = TrackerTag::QueryId(BigIntPayload(3225));
         assert_eq!(vec![2, 4, 0, 0, 12, 153], value.serialize());
         let value = TrackerTag::QueryString(RawStringPayload(vec![115, 105, 108, 118, 101, 114, 102, 111, 120]));
         assert_eq!(vec![3, 9, 115, 105, 108, 118, 101, 114, 102, 111, 120], value.serialize());
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(vec![15, 2, 0, 6], value.serialize());
         let value = TrackerTag::SoftwareVersion(RawStringPayload(vec![49, 46, 48, 46, 50]));
         assert_eq!(vec![16, 5, 49, 46, 48, 46, 50], value.serialize());
-        let value = TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(
+        let value = TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(
             PlayerId::new(0),
             SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)
         ));
@@ -372,7 +372,7 @@ mod tests {
         value.add_tag(TrackerTag::PlayerLimit(SmallIntPayload(6)));
         value.add_tag(TrackerTag::Invitation(RawStringPayload(vec![73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101])));
         value.add_tag(TrackerTag::HasPassword);
-        value.add_tag(TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(
+        value.add_tag(TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(
             PlayerId::new(0),
             SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)
         )));

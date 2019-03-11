@@ -27,7 +27,7 @@ pub enum Error {
     UnexpectedDatagramBoundary = 1,
     MissingProtocolVersion,
     MissingCommand,
-    MissingQueryID,
+    MissingQueryId,
     InvalidTag,
     InvalidCommand,
     InvalidGameStatus,
@@ -43,7 +43,7 @@ impl fmt::Display for Error {
                 write!(f, "Datagram contained no protocol version information"),
             Error::MissingCommand =>
                 write!(f, "Datagram contained no command tag"),
-            Error::MissingQueryID =>
+            Error::MissingQueryId =>
                 write!(f, "Datagram contained no query id when it was required"),
             Error::InvalidTag =>
                 write!(f, "Invalid tag encountered"),
@@ -208,7 +208,7 @@ impl TryParse for TrackerTag {
 
         let tag = match bytes[0] {
             1 => TrackerTag::Command(CommandPayload::try_parse(payload)?),
-            2 => TrackerTag::QueryID(BigIntPayload::try_parse(payload)?),
+            2 => TrackerTag::QueryId(BigIntPayload::try_parse(payload)?),
             3 => TrackerTag::QueryString(RawStringPayload::try_parse(payload)?),
             4 => TrackerTag::HostDomain(RawStringPayload::try_parse(payload)?),
             5 => TrackerTag::ResponseIndex(IntPayload::try_parse(payload)?),
@@ -223,7 +223,7 @@ impl TryParse for TrackerTag {
             14 => TrackerTag::LevelName(RawStringPayload::try_parse(payload)?),
             15 => TrackerTag::ProtocolVersion(IntPayload::try_parse(payload)?),
             16 => TrackerTag::SoftwareVersion(RawStringPayload::try_parse(payload)?),
-            255 => TrackerTag::PlayerIPPort(IndexedSocketAddrPayload::try_parse(payload)?),
+            255 => TrackerTag::PlayerIpPort(IndexedSocketAddrPayload::try_parse(payload)?),
             254 => TrackerTag::PlayerNick(IndexedRawStringPayload::try_parse(payload)?),
             253 => TrackerTag::PlayerLives(IndexedIntPayload::try_parse(payload)?),
             252 => TrackerTag::PlayerLocation(IndexedLocationPayload::try_parse(payload)?),
@@ -264,9 +264,9 @@ impl TryParse for Datagram {
             let tag = TrackerTag::try_parse(&bytes[start_idx..rbound])?;
             match tag {
                 TrackerTag::Command(CommandPayload(comm)) => command = Some(comm),
-                TrackerTag::QueryID(BigIntPayload(id)) => query_id = Some(id),
+                TrackerTag::QueryId(BigIntPayload(id)) => query_id = Some(id),
                 TrackerTag::ProtocolVersion(IntPayload(vers)) => protocol_version = Some(vers),
-                TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(id, addr)) => {
+                TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(id, addr)) => {
                     if id == PlayerId::new(0) {
                         host_address = Some(addr);
                     }
@@ -280,7 +280,7 @@ impl TryParse for Datagram {
         let protocol_version = protocol_version.ok_or(Error::MissingProtocolVersion)?;
         let command = command.ok_or(Error::MissingCommand)?;
         if (command == Command::Query || command == Command::Response) && query_id.is_none() {
-            return Err(Error::MissingQueryID);
+            return Err(Error::MissingQueryId);
         }
 
         Ok(Datagram { protocol_version, command, host_address, query_id, tags })
@@ -661,7 +661,7 @@ mod tests {
                      6, 2, 1, 244, 3, 0];
         let datagram = Datagram::try_parse(&bytes);
         assert!(datagram.is_err());
-        assert_eq!(Error::MissingQueryID, datagram.unwrap_err());
+        assert_eq!(Error::MissingQueryId, datagram.unwrap_err());
     }
 
     #[test]
