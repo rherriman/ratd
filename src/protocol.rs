@@ -164,9 +164,10 @@ impl Lobby {
         response.host_address = datagram.host_address;
         response.tags = datagram.tags.clone();
         for tag in response.tags.iter_mut() {
-            if let TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(id, _)) = tag {
+            if let TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(id, addr)) = tag {
                 if *id == PlayerId::new(0) {
-                    *tag = TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(*id, *real_addr));
+                    let new_addr = SocketAddr::new(real_addr.ip(), addr.port());
+                    *tag = TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(*id, new_addr));
                     response.host_address = Some(*real_addr);
                 }
             }
