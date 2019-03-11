@@ -155,7 +155,7 @@ pub struct Lobby {
 }
 
 impl Lobby {
-    pub fn new(datagram: &Datagram) -> Lobby {
+    pub fn new(real_addr: &SocketAddr, datagram: &Datagram) -> Lobby {
         if datagram.command != Command::Hello {
             panic!("Lobby instance can only be created from \"hello\" datagrams");
         }
@@ -163,6 +163,15 @@ impl Lobby {
         let mut response = Datagram::new(Command::Response);
         response.host_address = datagram.host_address;
         response.tags = datagram.tags.clone();
+        for tag in response.tags.iter_mut() {
+            if let TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(id, addr)) = tag {
+                if *id == PlayerId::new(0) {
+                    let new_addr = SocketAddr::new(real_addr.ip(), addr.port());
+                    *tag = TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(*id, new_addr));
+                    response.host_address = Some(*real_addr);
+                }
+            }
+        }
         Lobby { preserialized: response.serialize(), modified }
     }
 
@@ -200,7 +209,7 @@ impl LobbyList {
     }
 
     pub fn insert(&self, key: &SocketAddr, datagram: &Datagram) {
-        self.list.write().unwrap().insert(*key, Lobby::new(datagram));
+        self.list.write().unwrap().insert(*key, Lobby::new(key, datagram));
     }
 
     pub fn remove(&self, key: &SocketAddr) {
@@ -313,17 +322,19 @@ mod tests {
 
     #[test]
     fn new_lobby() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 16)), 19567);
         let datagram = build_hello();
-        let lobby = Lobby::new(&datagram);
+        let lobby = Lobby::new(&addr, &datagram);
         assert!(lobby.modified.elapsed() < Duration::from_secs(1));
     }
 
     #[test]
     #[should_panic]
     fn fail_new_lobby() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567);
         let mut datagram = build_hello();
         datagram.command = Command::Goodbye;
-        let _ = Lobby::new(&datagram);
+        let _ = Lobby::new(&addr, &datagram);
     }
 
     #[test]
