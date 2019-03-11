@@ -6,7 +6,7 @@ use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::RwLock,
-    time::{Duration, Instant}
+    time::{Duration, Instant},
 };
 
 use self::serialize::Serialize;
@@ -119,7 +119,7 @@ impl Datagram {
             command,
             host_address: None,
             query_id: None,
-            tags: Vec::new()
+            tags: Vec::new(),
         }
     }
 
@@ -178,7 +178,10 @@ impl Lobby {
                 }
             }
         }
-        Lobby { preserialized: response.serialize(), modified }
+        Lobby {
+            preserialized: response.serialize(),
+            modified,
+        }
     }
 
     /// Returns a serialized version of a `Command::Response` `Datagram` for this `Lobby`.
@@ -188,7 +191,12 @@ impl Lobby {
     /// * `query_id` - The query ID to which we are responding. (This value is typically received from an incoming `Command::Query` `Datagram`.)
     /// * `response_index` - The index of this `Command::Response` `Datagram` in relation to the rest of the outgoing batch.
     /// * `response_count` - The total number of `Command::Response` `Datagram`s in the outgoing batch.
-    pub fn as_serialized_response(&self, query_id: u32, response_index: u16, response_count: u16) -> Vec<u8> {
+    pub fn as_serialized_response(
+        &self,
+        query_id: u32,
+        response_index: u16,
+        response_count: u16,
+    ) -> Vec<u8> {
         let mut outgoing = self.preserialized.clone();
         outgoing.reserve(14);
         outgoing.append(&mut TrackerTag::QueryId(BigIntPayload(query_id)).serialize());
@@ -216,7 +224,11 @@ impl LobbyList {
     ///
     /// * `expiration_threshold` - The point past which a `Lobby` is considered "stale."
     pub fn cleanup(&self, expiration_threshold: Duration) {
-        let to_delete = self.list.read().unwrap().iter()
+        let to_delete = self
+            .list
+            .read()
+            .unwrap()
+            .iter()
             .filter(|(_, lobby)| lobby.modified.elapsed() >= expiration_threshold)
             .map(|(k, _)| *k)
             .collect::<Vec<SocketAddr>>();
@@ -275,7 +287,11 @@ impl LobbyList {
             };
             for (idx, (_, lobby)) in filtered_list.enumerate() {
                 let response_index = idx as u16;
-                responses.push(lobby.as_serialized_response(query_id, response_index, response_count));
+                responses.push(lobby.as_serialized_response(
+                    query_id,
+                    response_index,
+                    response_count,
+                ));
             }
         }
 
@@ -287,37 +303,47 @@ impl LobbyList {
 mod tests {
     use std::{
         net::{IpAddr, Ipv4Addr},
-        time::Duration
+        time::Duration,
     };
 
-    use super::{
-        *,
-        parse::TryParse
-    };
+    use super::{parse::TryParse, *};
 
     fn build_hello() -> Datagram {
         let mut datagram = Datagram::new(Command::Hello);
-        datagram.add_tag(TrackerTag::SoftwareVersion(RawStringPayload(vec![49, 46, 48, 46, 50])));
+        datagram.add_tag(TrackerTag::SoftwareVersion(RawStringPayload(vec![
+            49, 46, 48, 46, 50,
+        ])));
         datagram.add_tag(TrackerTag::PlayerLimit(SmallIntPayload(6)));
-        datagram.add_tag(TrackerTag::Invitation(RawStringPayload(vec![73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101])));
+        datagram.add_tag(TrackerTag::Invitation(RawStringPayload(vec![
+            73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101,
+        ])));
         datagram.add_tag(TrackerTag::HasPassword);
         datagram.add_tag(TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(
             PlayerId::new(0),
-            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567),
         )));
-        datagram.add_tag(TrackerTag::LevelDirectory(RawStringPayload(vec![65, 65, 32, 78, 111, 114, 109, 97, 108])));
-        datagram.add_tag(TrackerTag::LevelName(RawStringPayload(vec![67, 111, 114, 111, 109, 111, 114, 97, 110])));
-        datagram.add_tag(TrackerTag::GameStatus(GameStatusPayload(GameStatus::Active)));
+        datagram.add_tag(TrackerTag::LevelDirectory(RawStringPayload(vec![
+            65, 65, 32, 78, 111, 114, 109, 97, 108,
+        ])));
+        datagram.add_tag(TrackerTag::LevelName(RawStringPayload(vec![
+            67, 111, 114, 111, 109, 111, 114, 97, 110,
+        ])));
+        datagram.add_tag(TrackerTag::GameStatus(GameStatusPayload(
+            GameStatus::Active,
+        )));
         datagram.add_tag(TrackerTag::PlayerNick(IndexedRawStringPayload(
             PlayerId::new(0),
-            RawStringPayload(vec![115, 105, 108, 118, 101, 114, 102, 111, 120])
+            RawStringPayload(vec![115, 105, 108, 118, 101, 114, 102, 111, 120]),
         )));
         datagram.add_tag(TrackerTag::PlayerLocation(IndexedLocationPayload(
             PlayerId::new(0),
             IntPayload(7_233),
-            IntPayload(46_424)
+            IntPayload(46_424),
         )));
-        datagram.add_tag(TrackerTag::PlayerLives(IndexedIntPayload(PlayerId::new(0), IntPayload(3))));
+        datagram.add_tag(TrackerTag::PlayerLives(IndexedIntPayload(
+            PlayerId::new(0),
+            IntPayload(3),
+        )));
         datagram
     }
 
@@ -375,16 +401,17 @@ mod tests {
 
         let datagram = result.unwrap();
         assert_eq!(
-            Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 16)), 19567)),
+            Some(SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(10, 0, 2, 16)),
+                19567
+            )),
             datagram.host_address
         );
 
-        let host_addr = datagram.tags
-            .iter()
-            .find(|tag| match tag {
-                TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(id, _)) => *id == PlayerId::new(0),
-                _ => false
-            });
+        let host_addr = datagram.tags.iter().find(|tag| match tag {
+            TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(id, _)) => *id == PlayerId::new(0),
+            _ => false,
+        });
         assert!(host_addr.is_some());
 
         if let Some(TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(_, host_addr))) = host_addr {

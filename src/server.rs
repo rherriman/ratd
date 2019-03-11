@@ -5,17 +5,14 @@ use std::{
     net::{SocketAddr, UdpSocket},
     sync::Arc,
     thread,
-    time::Duration
+    time::Duration,
 };
 
-use super::protocol::{
-    Command, Datagram, LobbyList,
-    parse::TryParse
-};
 use self::{
     config::{Config, Error},
-    threading::ThreadPool
+    threading::ThreadPool,
 };
+use super::protocol::{parse::TryParse, Command, Datagram, LobbyList};
 
 pub struct Server {
     expiration_threshold: Duration,
@@ -34,18 +31,22 @@ impl Server {
         let socket = Arc::new(UdpSocket::bind(address).map_err(|_| Error::SocketBindFailure)?);
         let thread_pool = ThreadPool::new(config.workers);
         let verbose_logging = config.verbose;
-        Ok(Server { expiration_threshold, lobby_list, socket, thread_pool, verbose_logging })
+        Ok(Server {
+            expiration_threshold,
+            lobby_list,
+            socket,
+            thread_pool,
+            verbose_logging,
+        })
     }
 
     pub fn run(&self) {
         let cleanup_sleep_time = Duration::from_secs(15);
         let expiration_threshold = self.expiration_threshold;
         let lobby_list = Arc::clone(&self.lobby_list);
-        thread::spawn(move || {
-            loop {
-                lobby_list.cleanup(expiration_threshold);
-                thread::sleep(cleanup_sleep_time);
-            }
+        thread::spawn(move || loop {
+            lobby_list.cleanup(expiration_threshold);
+            thread::sleep(cleanup_sleep_time);
         });
 
         loop {
@@ -55,7 +56,7 @@ impl Server {
                 Err(_) => {
                     eprintln!("ERROR: \"Failed to receive datagram\"");
                     continue;
-                },
+                }
             };
             let lobby_list = Arc::clone(&self.lobby_list);
             let socket = Arc::clone(&self.socket);
@@ -79,14 +80,14 @@ impl Server {
                                     eprintln!("ERROR: \"Failed to send response\"");
                                 }
                             }
-                        },
-                        Command::Response => { /* Tracker sends these but shouldn't receive! */ },
+                        }
+                        Command::Response => { /* Tracker sends these but shouldn't receive! */ }
                         Command::Hello => lobby_list.insert(&src, &datagram),
                         Command::Goodbye => lobby_list.remove(&src),
                     },
                     Err(e) => {
                         eprintln!("ERROR: \"{}\" on received bytes: {:?}", e, contents);
-                    },
+                    }
                 }
             });
         }
