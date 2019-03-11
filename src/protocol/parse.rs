@@ -1,25 +1,12 @@
 use std::{
     fmt,
-    net::{IpAddr, Ipv4Addr, SocketAddr}
+    net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
 use super::{
-    MAX_PLAYERS,
-    Command,
-    GameStatus,
-    CommandPayload,
-    GameStatusPayload,
-    BigIntPayload,
-    IntPayload,
-    SmallIntPayload,
-    RawStringPayload,
-    PlayerId,
-    IndexedSocketAddrPayload,
-    IndexedRawStringPayload,
-    IndexedIntPayload,
-    IndexedLocationPayload,
-    TrackerTag,
-    Datagram
+    BigIntPayload, Command, CommandPayload, Datagram, GameStatus, GameStatusPayload,
+    IndexedIntPayload, IndexedLocationPayload, IndexedRawStringPayload, IndexedSocketAddrPayload,
+    IntPayload, PlayerId, RawStringPayload, SmallIntPayload, TrackerTag, MAX_PLAYERS,
 };
 
 #[derive(Debug, PartialEq)]
@@ -27,7 +14,7 @@ pub enum Error {
     UnexpectedDatagramBoundary = 1,
     MissingProtocolVersion,
     MissingCommand,
-    MissingQueryID,
+    MissingQueryId,
     InvalidTag,
     InvalidCommand,
     InvalidGameStatus,
@@ -37,27 +24,28 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::UnexpectedDatagramBoundary =>
-                write!(f, "Unexpected datagram boundary encountered"),
-            Error::MissingProtocolVersion =>
-                write!(f, "Datagram contained no protocol version information"),
-            Error::MissingCommand =>
-                write!(f, "Datagram contained no command tag"),
-            Error::MissingQueryID =>
-                write!(f, "Datagram contained no query id when it was required"),
-            Error::InvalidTag =>
-                write!(f, "Invalid tag encountered"),
-            Error::InvalidCommand =>
-                write!(f, "Invalid command encountered"),
-            Error::InvalidGameStatus =>
-                write!(f, "Invalid game status encountered"),
-            Error::InvalidPlayerIndex =>
-                write!(f, "Invalid player index encountered"),
+            Error::UnexpectedDatagramBoundary => {
+                write!(f, "Unexpected datagram boundary encountered")
+            }
+            Error::MissingProtocolVersion => {
+                write!(f, "Datagram contained no protocol version information")
+            }
+            Error::MissingCommand => write!(f, "Datagram contained no command tag"),
+            Error::MissingQueryId => {
+                write!(f, "Datagram contained no query id when it was required")
+            }
+            Error::InvalidTag => write!(f, "Invalid tag encountered"),
+            Error::InvalidCommand => write!(f, "Invalid command encountered"),
+            Error::InvalidGameStatus => write!(f, "Invalid game status encountered"),
+            Error::InvalidPlayerIndex => write!(f, "Invalid player index encountered"),
         }
     }
 }
 
-pub trait TryParse where Self: Sized {
+pub trait TryParse
+where
+    Self: Sized,
+{
     fn try_parse(bytes: &[u8]) -> Result<Self, Error>;
 }
 
@@ -208,7 +196,7 @@ impl TryParse for TrackerTag {
 
         let tag = match bytes[0] {
             1 => TrackerTag::Command(CommandPayload::try_parse(payload)?),
-            2 => TrackerTag::QueryID(BigIntPayload::try_parse(payload)?),
+            2 => TrackerTag::QueryId(BigIntPayload::try_parse(payload)?),
             3 => TrackerTag::QueryString(RawStringPayload::try_parse(payload)?),
             4 => TrackerTag::HostDomain(RawStringPayload::try_parse(payload)?),
             5 => TrackerTag::ResponseIndex(IntPayload::try_parse(payload)?),
@@ -223,7 +211,7 @@ impl TryParse for TrackerTag {
             14 => TrackerTag::LevelName(RawStringPayload::try_parse(payload)?),
             15 => TrackerTag::ProtocolVersion(IntPayload::try_parse(payload)?),
             16 => TrackerTag::SoftwareVersion(RawStringPayload::try_parse(payload)?),
-            255 => TrackerTag::PlayerIPPort(IndexedSocketAddrPayload::try_parse(payload)?),
+            255 => TrackerTag::PlayerIpPort(IndexedSocketAddrPayload::try_parse(payload)?),
             254 => TrackerTag::PlayerNick(IndexedRawStringPayload::try_parse(payload)?),
             253 => TrackerTag::PlayerLives(IndexedIntPayload::try_parse(payload)?),
             252 => TrackerTag::PlayerLocation(IndexedLocationPayload::try_parse(payload)?),
@@ -264,14 +252,14 @@ impl TryParse for Datagram {
             let tag = TrackerTag::try_parse(&bytes[start_idx..rbound])?;
             match tag {
                 TrackerTag::Command(CommandPayload(comm)) => command = Some(comm),
-                TrackerTag::QueryID(BigIntPayload(id)) => query_id = Some(id),
+                TrackerTag::QueryId(BigIntPayload(id)) => query_id = Some(id),
                 TrackerTag::ProtocolVersion(IntPayload(vers)) => protocol_version = Some(vers),
-                TrackerTag::PlayerIPPort(IndexedSocketAddrPayload(id, addr)) => {
+                TrackerTag::PlayerIpPort(IndexedSocketAddrPayload(id, addr)) => {
                     if id == PlayerId::new(0) {
                         host_address = Some(addr);
                     }
                     tags.push(tag);
-                },
+                }
                 _ => tags.push(tag),
             }
             start_idx = rbound;
@@ -280,18 +268,25 @@ impl TryParse for Datagram {
         let protocol_version = protocol_version.ok_or(Error::MissingProtocolVersion)?;
         let command = command.ok_or(Error::MissingCommand)?;
         if (command == Command::Query || command == Command::Response) && query_id.is_none() {
-            return Err(Error::MissingQueryID);
+            return Err(Error::MissingQueryId);
         }
 
-        Ok(Datagram { protocol_version, command, host_address, query_id, tags })
+        Ok(Datagram {
+            protocol_version,
+            command,
+            host_address,
+            query_id,
+            tags,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::protocol::PROTOCOL_VERSION;
     use super::*;
+    use crate::protocol::PROTOCOL_VERSION;
 
+    #[rustfmt::skip]
     const TEST_QUERY: [u8; 33] = [
         15, 2, 0, 6,                // Protocol version
         16, 5, 49, 46, 48, 46, 50,  // Software version
@@ -299,7 +294,10 @@ mod tests {
         252, 5, 0, 28, 65, 181, 88, // Location
         2, 4, 0, 0, 12, 153,        // Query ID
         6, 2, 1, 244,               // Response count
-        3, 0];                      // Query String
+        3, 0                        // Query String
+    ];
+
+    #[rustfmt::skip]
     const TEST_HELLO_SIMPLE: [u8; 68] = [
         15, 2, 0, 6,               // Protocol version
         16, 5, 49, 46, 48, 46, 50, // Software Version
@@ -323,6 +321,8 @@ mod tests {
         // Command (in this case, "Hello")
         1, 1, 2
     ];
+
+    #[rustfmt::skip]
     const TEST_HELLO_COMPLEX: [u8; 97] = [
         15, 2, 0, 6,               // Protocol version
         16, 5, 49, 46, 48, 46, 50, // Software version
@@ -358,6 +358,8 @@ mod tests {
         // Command
         1, 1, 2
     ];
+
+    #[rustfmt::skip]
     const TEST_GOODBYE: [u8; 97] = [
         15, 2, 0, 6,               // Protocol version
         16, 5, 49, 46, 48, 46, 50, // Software version
@@ -500,7 +502,10 @@ mod tests {
         assert!(result.is_ok());
         let IndexedSocketAddrPayload(player, addr) = result.unwrap();
         assert_eq!(PlayerId::new(0), player);
-        assert_eq!(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567), addr);
+        assert_eq!(
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567),
+            addr
+        );
 
         let result = IndexedSocketAddrPayload::try_parse(&bytes);
         assert!(result.is_err());
@@ -596,7 +601,9 @@ mod tests {
         assert_tag_parses(&bytes);
         let bytes = [3, 9, 115, 105, 108, 118, 101, 114, 102, 111, 120];
         assert_tag_parses(&bytes);
-        let bytes = [4, 13, 112, 108, 97, 121, 97, 118, 97, 114, 97, 46, 110, 101, 116];
+        let bytes = [
+            4, 13, 112, 108, 97, 121, 97, 118, 97, 114, 97, 46, 110, 101, 116,
+        ];
         assert_tag_parses(&bytes);
         let bytes = [5, 2, 1, 243];
         assert_tag_parses(&bytes);
@@ -604,9 +611,14 @@ mod tests {
         assert_tag_parses(&bytes);
         let bytes = [7, 6, 82, 101, 97, 100, 121, 46];
         assert_tag_parses(&bytes);
-        let bytes = [8, 17, 87, 105, 100, 101, 32, 79, 112, 101, 110, 32, 83, 111, 117, 114, 99, 101, 115];
+        let bytes = [
+            8, 17, 87, 105, 100, 101, 32, 79, 112, 101, 110, 32, 83, 111, 117, 114, 99, 101, 115,
+        ];
         assert_tag_parses(&bytes);
-        let bytes = [9, 18, 73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103, 101];
+        let bytes = [
+            9, 18, 73, 110, 118, 105, 116, 97, 116, 105, 111, 110, 32, 77, 101, 115, 115, 97, 103,
+            101,
+        ];
         assert_tag_parses(&bytes);
         let bytes = [10, 0];
         assert_tag_parses(&bytes);
@@ -639,8 +651,10 @@ mod tests {
 
     #[test]
     fn datagram_missing_protocol_version() {
-        let bytes = [16, 5, 49, 46, 48, 46, 50, 1, 1, 0, 252, 5, 0, 28, 65, 181, 88,
-                     2, 4, 0, 0, 12, 153, 6, 2, 1, 244, 3, 0];
+        let bytes = [
+            16, 5, 49, 46, 48, 46, 50, 1, 1, 0, 252, 5, 0, 28, 65, 181, 88, 2, 4, 0, 0, 12, 153, 6,
+            2, 1, 244, 3, 0,
+        ];
         let datagram = Datagram::try_parse(&bytes);
         assert!(datagram.is_err());
         assert_eq!(Error::MissingProtocolVersion, datagram.unwrap_err());
@@ -648,8 +662,10 @@ mod tests {
 
     #[test]
     fn datagram_missing_command() {
-        let bytes = [15, 2, 0, 6, 16, 5, 49, 46, 48, 46, 50, 252, 5, 0, 28, 65, 181, 88,
-                     2, 4, 0, 0, 12, 153, 6, 2, 1, 244, 3, 0];
+        let bytes = [
+            15, 2, 0, 6, 16, 5, 49, 46, 48, 46, 50, 252, 5, 0, 28, 65, 181, 88, 2, 4, 0, 0, 12,
+            153, 6, 2, 1, 244, 3, 0,
+        ];
         let datagram = Datagram::try_parse(&bytes);
         assert!(datagram.is_err());
         assert_eq!(Error::MissingCommand, datagram.unwrap_err());
@@ -657,15 +673,18 @@ mod tests {
 
     #[test]
     fn datagram_missing_query_id() {
-        let bytes = [15, 2, 0, 6, 16, 5, 49, 46, 48, 46, 50, 1, 1, 0, 252, 5, 0, 28, 65, 181, 88,
-                     6, 2, 1, 244, 3, 0];
+        let bytes = [
+            15, 2, 0, 6, 16, 5, 49, 46, 48, 46, 50, 1, 1, 0, 252, 5, 0, 28, 65, 181, 88, 6, 2, 1,
+            244, 3, 0,
+        ];
         let datagram = Datagram::try_parse(&bytes);
         assert!(datagram.is_err());
-        assert_eq!(Error::MissingQueryID, datagram.unwrap_err());
+        assert_eq!(Error::MissingQueryId, datagram.unwrap_err());
     }
 
     #[test]
     fn datagram_ignore_null_tags() {
+        #[rustfmt::skip]
         let bytes = [15, 2, 0, 6,
                      /* Null tag: */ 0,
                      1, 1, 0,
@@ -703,7 +722,10 @@ mod tests {
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Hello, datagram.command);
         assert_eq!(
-            Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)),
+            Some(SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)),
+                19567
+            )),
             datagram.host_address
         );
         assert_eq!(7, datagram.tags.len());
@@ -718,7 +740,10 @@ mod tests {
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Hello, datagram.command);
         assert_eq!(
-            Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)),
+            Some(SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)),
+                19567
+            )),
             datagram.host_address
         );
         assert_eq!(11, datagram.tags.len());
@@ -733,7 +758,10 @@ mod tests {
         assert_eq!(PROTOCOL_VERSION, datagram.protocol_version);
         assert_eq!(Command::Goodbye, datagram.command);
         assert_eq!(
-            Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)), 19567)),
+            Some(SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(10, 0, 2, 15)),
+                19567
+            )),
             datagram.host_address
         );
         assert_eq!(11, datagram.tags.len());

@@ -1,11 +1,8 @@
 use std::process;
 
-use clap::{App, load_yaml};
+use clap::{load_yaml, App};
 
-use ratd::server::{
-    Server,
-    config::Config,
-};
+use ratd::server::{config::Config, Server};
 
 fn main() {
     let yml = load_yaml!("cli_en.yml");

@@ -1,7 +1,7 @@
 use std::{
     num::NonZeroU8,
-    sync::{Arc, mpsc, Mutex},
-    thread
+    sync::{mpsc, Arc, Mutex},
+    thread,
 };
 
 pub struct ThreadPool {
@@ -28,7 +28,9 @@ impl ThreadPool {
 
     /// Delegate some task to the ThreadPool in the form of a closure.
     pub fn execute<F>(&self, f: F)
-        where F: FnOnce() + Send + 'static {
+    where
+        F: FnOnce() + Send + 'static,
+    {
         let job = Box::new(f);
         self.sender.send(Message::NewJob(job)).unwrap();
     }
@@ -60,17 +62,18 @@ struct Worker {
 
 impl Worker {
     fn new(id: u8, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-        let thread = thread::spawn(move || {
-            loop {
-                let message = receiver.lock().unwrap().recv().unwrap();
-                match message {
-                    Message::NewJob(job) => job.call_box(),
-                    Message::Terminate => break,
-                }
+        let thread = thread::spawn(move || loop {
+            let message = receiver.lock().unwrap().recv().unwrap();
+            match message {
+                Message::NewJob(job) => job.call_box(),
+                Message::Terminate => break,
             }
         });
 
-        Worker { id, thread: Some(thread) }
+        Worker {
+            id,
+            thread: Some(thread),
+        }
     }
 }
 
@@ -84,7 +87,9 @@ trait FnBox {
 }
 
 impl<F> FnBox for F
-    where F: FnOnce() {
+where
+    F: FnOnce(),
+{
     fn call_box(self: Box<F>) {
         (*self)()
     }

@@ -1,9 +1,6 @@
-use std::{
-    fmt,
-    num::NonZeroU8
-};
+use std::{fmt, num::NonZeroU8};
 
-use clap::{ArgMatches, value_t};
+use clap::{value_t, ArgMatches};
 
 #[derive(Debug)]
 pub enum Error {
@@ -16,14 +13,14 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::InvalidPortNumber =>
-                write!(f, "Port must be a number between 0 and 65535"),
-            Error::InvalidLobbyTimeout =>
-                write!(f, "Lobby timeout must be a number between 0 and 255"),
-            Error::InvalidWorkerCount =>
-                write!(f, "Worker count must be a number between 0 and 255"),
-            Error::SocketBindFailure =>
-                write!(f, "Couldn't bind to address"),
+            Error::InvalidPortNumber => write!(f, "Port must be a number between 0 and 65535"),
+            Error::InvalidLobbyTimeout => {
+                write!(f, "Lobby timeout must be a number between 0 and 255")
+            }
+            Error::InvalidWorkerCount => {
+                write!(f, "Worker count must be a number between 0 and 255")
+            }
+            Error::SocketBindFailure => write!(f, "Couldn't bind to address"),
         }
     }
 }
@@ -52,7 +49,7 @@ impl Config {
                     }
 
                     NonZeroU8::new(expiration_threshold).unwrap()
-                },
+                }
                 Err(_) => return Err(Error::InvalidLobbyTimeout),
             };
         }
@@ -69,7 +66,7 @@ impl Config {
                     }
 
                     NonZeroU8::new(workers).unwrap()
-                },
+                }
                 Err(_) => return Err(Error::InvalidWorkerCount),
             };
         }
